@@ -181,6 +181,9 @@ augment(aus_fit) %>%
   ggplot(aes(x = Quarter))+
   geom_line(aes(y = .fitted), color = "blue") +
   geom_point(data = aus_production, aes(y = Gas))
+
+# add damped trend and compare RMSE
+# let the program decide on the best model specification
 ```
 
 # Qn 8
