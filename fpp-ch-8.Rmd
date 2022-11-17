@@ -1,0 +1,197 @@
+---
+title: "FPP Ch 8"
+output: html_notebook
+---
+
+# Qn 5
+
+```{r, results='hide', message=FALSE}
+
+install.packages("data.table")
+install.packages("readr")
+install.packages("USgas")
+install.packages("readxl")
+install.packages("ggdist")
+
+```
+
+```{r}
+library(data.table) 
+library(fpp3)
+library(readr)
+library(USgas)
+library(scales)
+library(readxl)
+library(ggdist)
+
+```
+
+```{r}
+ec_can <- global_economy %>% 
+  filter(Country == "Canada") 
+
+ec_can %>% autoplot(Exports)
+
+can_fit <- ec_can %>%
+  model( ETS(Exports ~ error("A") + trend("N") + season("N")))
+```
+
+```{r}
+can_fc <- can_fit %>%
+  forecast(h=10)
+
+can_fc %>% autoplot() +
+  autolayer(ec_can, Exports)
+
+# environmentName(environment(accuracy))
+accuracy(can_fit)
+```
+
+5d) The model with a trend is not significantly better than the model without. likely because there was a significant spike in exports in 2000 and it goes back down to the long term average after.
+
+```{r}
+can_fit <- ec_can %>%
+  model( 
+    ANN = ETS(Exports ~ error("A") + trend("N") + season("N")),
+    AAN = ETS(Exports ~ error("A") + trend("A") + season("N"))
+  )
+
+accuracy(can_fit)
+```
+
+5e) the forecast for AAN with the negative trend seems incorrect. it puts too much weight on the drop since the 2000 spike, instead of the recent points which show a clear increasing trend.
+
+```{r}
+can_fc <- can_fit %>% 
+  forecast(h=10)
+
+head(can_fc)
+
+can_fc %>% autoplot()
+
+can_fc %>% ggplot(aes(x = Year)) +
+  geom_line(aes(y = .mean, color = .model)) +
+  geom_line(aes(x = Year, y = Exports), data = ec_can, )
+```
+
+5f) Forecast variance of (A,N,N) is $\sigma_h^2 = \sigma^2 [1 + \alpha^2(h-1)]$
+
+```{r}
+
+can_fit %>% components() # gets you the level slope components of ETS
+can_fit %>% tidy() # get model coefficients
+can_fit %>% fitted() # get only fitted values, this is less useful
+can_fit %>% augment() # get exports and fitted values and residuals in the same dataset
+
+ec_can
+
+accuracy(can_fit)
+
+accuracy(can_fit)$RMSE[1]
+
+```
+
+# Qn 6
+
+Forecast the Chinese GDP from the `global_economy` data set using an ETS model. Experiment with the various options in the `ETS()` function to see how much the forecasts change with damped trend, or with a Box-Cox transformation. Try to develop an intuition of what each is doing to the forecasts.
+
+```{r}
+china <- global_economy %>% 
+  filter(Country == "China")
+
+china %>% autoplot(GDP)
+
+china_fit <- china %>% 
+  model(
+    "holt" = ETS(GDP ~ error("A") + trend("A") + season("N")),
+    "damped" = ETS(GDP ~ error("A") + trend("Ad") + season("N"))
+    # "mult_damped" = ETS(GDP ~ error("A") + trend("M") + season("N")) #multiplicative trend does not exist
+  )
+
+china_fc <- china_fit %>% 
+  forecast(h=20)
+
+china_fc
+
+china_fc %>%
+  autoplot() +
+  autolayer(china, GDP)
+
+```
+
+Apply box-cox transformation
+
+```{r}
+#I don't know what this "features" funciton do but it seems useful
+
+lambda <- china %>%
+  features(GDP, features = guerrero) %>%
+  pull(lambda_guerrero)
+
+china %>% autoplot(box_cox(GDP, lambda))
+
+china_fit
+
+# supposedly, applying a transofmration within a model will automatically back transform it. How do we confirm?
+
+china_fit2 <- china %>% 
+  model(
+    "boxcox" = ETS(box_cox(GDP, lambda) ~ error("A") + trend("Ad") + season("N"))
+  )
+
+china_fit2 # I don't know how to combine this into the original mable china_fit
+
+china_fit2 %>% 
+  forecast(h=10) %>% 
+  autoplot() + 
+  autolayer(china_fc) +
+  autolayer(china, GDP)
+
+#unclear what's going on with this transformation if not dampened. The forecast just shoots off into infinity.
+```
+
+# Qn 7
+
+```{r}
+aus_production %>% autoplot(Gas)
+
+aus_fit <- aus_production %>% 
+  model(
+    "AAdM" = ETS(Gas ~ error("A") + trend("Ad") + season("M"))
+  )
+
+aus_fit
+
+#why does this take so long to run?
+aus_fc <- aus_fit %>% 
+  forecast(h = "3 years")
+
+augment(aus_fit)
+aus_fc_hilo <- aus_fc %>% 
+  hilo() %>% 
+  unpack_hilo(`95%`)
+aus_fc_hilo # unpack_hilo() will unpack this object
+
+# forecast plot
+aus_fc %>% 
+  autoplot(aus_production)
+
+# historical actual vs expected
+augment(aus_fit) %>% 
+  ggplot(aes(x = Quarter))+
+  geom_line(aes(y = .fitted), color = "blue") +
+  geom_point(data = aus_production, aes(y = Gas))
+```
+
+# Qn 8
+
+```{r}
+aus_retail
+?aus_retail
+
+set.seed(123456789)
+myseries <- aus_retail %>%
+  filter(`Series ID` == sample(aus_retail$`Series ID`,1))
+
+myseries
+```
