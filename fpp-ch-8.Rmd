@@ -179,7 +179,7 @@ gi
 # historical actual vs expected
 augment(aus_fit) %>% 
   ggplot(aes(x = Quarter))+
-  geom_line(aes(y = .fitted), color = "blue") +
+  geom_line(aes(y = .fitted)) +
   geom_point(data = aus_production, aes(y = Gas))
 
 # add damped trend and compare RMSE
