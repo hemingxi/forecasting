@@ -175,7 +175,7 @@ aus_fc_hilo # unpack_hilo() will unpack this object
 # forecast plot
 aus_fc %>% 
   autoplot(aus_production)
-
+gi
 # historical actual vs expected
 augment(aus_fit) %>% 
   ggplot(aes(x = Quarter))+
