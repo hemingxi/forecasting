@@ -7,11 +7,11 @@ output: html_notebook
 
 ```{r, results='hide', message=FALSE}
 
-install.packages("data.table")
-install.packages("readr")
-install.packages("USgas")
-install.packages("readxl")
-install.packages("ggdist")
+# install.packages("data.table")
+# install.packages("readr")
+# install.packages("USgas")
+# install.packages("readxl")
+# install.packages("ggdist")
 
 ```
 
@@ -130,7 +130,7 @@ lambda <- china %>%
 
 china %>% autoplot(box_cox(GDP, lambda))
 
-china_fit
+# china_fit
 
 # supposedly, applying a transofmration within a model will automatically back transform it. How do we confirm?
 
@@ -139,13 +139,28 @@ china_fit2 <- china %>%
     "boxcox" = ETS(box_cox(GDP, lambda) ~ error("A") + trend("Ad") + season("N"))
   )
 
-china_fit2 # I don't know how to combine this into the original mable china_fit
+#combine this into the original mable china_fit
+#I don't know if there's an easier way to combine two mables? but this works :/
 
-china_fit2 %>% 
+merge(china_fit, china_fit2)
+
+china_fit_tb <- china_fit %>% 
+  merge(china_fit2)
+
+china_fit_models <- names(china_fit_tb)[-1]
+
+typeof(china_fit_models)
+  
+china_fit_comb <- china_fit_tb %>% 
+  mable(key = Country, model = all_of(china_fit_models))
+
+china_fit_comb
+
+#plot results
+
+china_fit_comb %>% 
   forecast(h=10) %>% 
-  autoplot() + 
-  autolayer(china_fc) +
-  autolayer(china, GDP)
+  autoplot(china, level = NULL)
 
 #unclear what's going on with this transformation if not dampened. The forecast just shoots off into infinity.
 ```
@@ -175,7 +190,7 @@ aus_fc_hilo # unpack_hilo() will unpack this object
 # forecast plot
 aus_fc %>% 
   autoplot(aus_production)
-gi
+
 # historical actual vs expected
 augment(aus_fit) %>% 
   ggplot(aes(x = Quarter))+
@@ -190,11 +205,49 @@ augment(aus_fit) %>%
 
 ```{r}
 aus_retail
-?aus_retail
+# ?aus_retail
 
 set.seed(123456789)
 myseries <- aus_retail %>%
   filter(`Series ID` == sample(aus_retail$`Series ID`,1))
 
 myseries
+
+myseries %>% 
+  autoplot(Turnover)
+```
+
+Multiplicative seasonality is necessary because the seasonal variations vary in magnitude depending on the level
+
+```{r}
+my_fit <- myseries %>% 
+  model(
+        "MAM" = ETS(Turnover ~ error("M") + trend("A") + season("M")),
+        "MAdM" = ETS(Turnover ~ error("M") + trend("Ad") + season("M")))
+
+my_fc <- my_fit %>% 
+  forecast(h = "2 years")
+
+my_fc %>% autoplot(myseries, level = NULL)
+```
+
+I'm unclear about whether we should always use multiplicative seasonality with multiplicative errors?
+
+```{r}
+myseries
+
+start_time <- Sys.time()
+
+myseries %>% 
+  stretch_tsibble(.init=24) %>% 
+    model(
+        "MAM" = ETS(Turnover ~ error("M") + trend("A") + season("M")),
+        "MAdM" = ETS(Turnover ~ error("M") + trend("Ad") + season("M"))
+    ) %>% 
+  forecast(h=1) %>% 
+  accuracy(myseries)
+
+end_time <- Sys.time()
+
+end_time - start_time
 ```
