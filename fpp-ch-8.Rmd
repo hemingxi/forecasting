@@ -1,6 +1,12 @@
 ---
 title: "FPP Ch 8"
-output: html_notebook
+#output: html_notebook
+knit: (function(input, ...) {
+    rmarkdown::render(
+      input,
+      output_dir = "./output"
+    )
+  })
 ---
 
 # Qn 5
@@ -149,7 +155,7 @@ china_fit_tb <- china_fit %>%
 
 china_fit_models <- names(china_fit_tb)[-1]
 
-typeof(china_fit_models)
+# typeof(china_fit_models)
   
 china_fit_comb <- china_fit_tb %>% 
   mable(key = Country, model = all_of(china_fit_models))
@@ -220,6 +226,8 @@ myseries %>%
 Multiplicative seasonality is necessary because the seasonal variations vary in magnitude depending on the level
 
 ```{r}
+#we should be using only the training set here
+
 my_fit <- myseries %>% 
   model(
         "MAM" = ETS(Turnover ~ error("M") + trend("A") + season("M")),
@@ -234,20 +242,423 @@ my_fc %>% autoplot(myseries, level = NULL)
 I'm unclear about whether we should always use multiplicative seasonality with multiplicative errors?
 
 ```{r}
+myseries_train <- myseries %>%
+  filter(year(Month) < 2011)
+
+myseries_test <- myseries %>% 
+  filter(year(Month) >= 2011)
+
+```
+
+```{r}
 myseries
 
 start_time <- Sys.time()
 
-myseries %>% 
-  stretch_tsibble(.init=24) %>% 
+stretch <- myseries_train %>% 
+  stretch_tsibble(.init=24)
+
+modelled <- stretch %>% 
     model(
         "MAM" = ETS(Turnover ~ error("M") + trend("A") + season("M")),
         "MAdM" = ETS(Turnover ~ error("M") + trend("Ad") + season("M"))
-    ) %>% 
-  forecast(h=1) %>% 
-  accuracy(myseries)
+    )
+
+my_cv_fc <- modelled %>% 
+  forecast(h=1)
+
+(test <- my_cv_fc %>% 
+  accuracy(myseries_train))
 
 end_time <- Sys.time()
 
-end_time - start_time
+(run_time <- end_time - start_time)
+
+stretch
+modelled
+my_cv_fc %>% accuracy(myseries)
+```
+
+The damped series has better forecasts based on RMSE
+
+```{r}
+components(my_fit) %>% 
+  filter(.model == "MAdM") %>% 
+  autoplot()
+```
+
+Looks like the slope parameter might not be needed? The remainder does not look like white noise it significantly goes down over time.
+
+At this point, we could try additive errors? Though that does not change the point forecasts.
+
+```{r}
+
+my_fit_train <- myseries_train %>% 
+  model(
+     "MAdM" = ETS(Turnover ~ error("M") + trend("Ad") + season("M")),
+     "MAM" = ETS(Turnover ~ error("M") + trend("A") + season("M")),
+     "SNAIVE" = SNAIVE(Turnover)
+  )
+
+fc_period = nrow(myseries_test)
+
+my_fc_test <- my_fit_train %>%
+  forecast(h = fc_period) 
+
+my_fc_test %>% accuracy(myseries_test)
+```
+
+Turns out the non-damped series is the way to go. The MAdM model is only barely better than the SNaive forecast
+
+# Qn 9
+
+```{r}
+(lambda <- myseries_train %>% 
+    features(Turnover, features=guerrero) %>% 
+    pull(lambda_guerrero))
+
+#compare the transformed and not transformed graphs
+
+myseries_train %>% 
+  autoplot(box_cox(Turnover, lambda))
+
+myseries_train %>% autoplot(Turnover)
+
+myseries_STL <- myseries
+
+stl_dcmp <- myseries_train %>% 
+  model(stl = STL(box_cox(Turnover, lambda)))
+
+stl_dcmp_cmp <- components(stl_dcmp)
+
+stl_dcmp_cmp
+
+stl_dcmp_cmp %>% autoplot()
+stl_dcmp_cmp %>% autoplot(season_adjust)
+
+dcmp_fit <- myseries_train %>% 
+  model( "stlf" = decomposition_model(
+    STL(box_cox(Turnover, lambda)),
+    ETS(season_adjust ~ error("A") + trend("Ad") + season("N"))
+  ))
+
+dcmp_fc <- dcmp_fit %>% 
+  forecast(h = fc_period)
+
+dcmp_fc %>% 
+  autoplot(myseries_train) +
+  autolayer(myseries_test)
+
+dcmp_fc %>% accuracy(myseries_test)
+my_fc_test %>% accuracy(myseries_test)
+```
+
+this forecast is slightly better than MAdM and SNaive, but MAM seems to be the most accurate, because it was able to match the continuing trend in the test period
+
+```{r}
+dcmp_fc %>% 
+  autoplot(myseries_train) +
+  autolayer(myseries_test)
+
+my_fc_test %>% 
+  filter(.model == "MAM") %>% 
+  autoplot(myseries_train) +
+  autolayer(myseries_test)
+```
+
+# Qn 10
+
+```{r}
+?tourism
+
+aus_tour <- tourism %>% 
+  summarise(Trips = sum(Trips))
+
+aus_tour %>% autoplot()
+```
+
+The trips stayed flat until 2009, dropping during the GFS, then steadily increases
+
+```{r}
+
+aus_tour %>% 
+  model(STL(Trips)) %>% 
+  components() %>% 
+  autoplot()
+
+```
+
+```{r}
+
+tour_fit1 <- aus_tour %>% 
+  model(
+    "damped" = decomposition_model(
+      STL(Trips),
+      ETS(season_adjust ~ error("A") + trend("Ad") + season("N"))
+    ),
+    "Holt" = decomposition_model(
+      STL(Trips),
+      ETS(season_adjust ~ error("A") + trend("A") + season("N"))
+    )
+  )
+
+tour_fc <- tour_fit1 %>% 
+  forecast(h = "2 years")
+
+tour_fc %>%
+  filter(.model == "damped") %>% 
+  autoplot(aus_tour)
+
+tour_fc %>% 
+  filter(.model == "Holt") %>% 
+  autoplot(aus_tour)
+```
+
+```{r}
+tour_fit2 <- aus_tour %>% 
+  model(
+    ETS(Trips)
+  )
+  
+tour_fc2 <- tour_fit2 %>% 
+  forecast(h = "2 years")
+
+tour_fc2 %>% 
+  autoplot(aus_tour)
+
+tour_fit2
+
+accuracy(tour_fit2) %>% 
+  rbind(accuracy(tour_fit1))
+
+```
+
+The model with the lowest errors are the decomposition with Holt, though it comes pretty close
+
+As for the forecasts, I like the damped approach because we do not know why the increase happened and whether or not it should continue.
+
+```{r}
+
+tour_damped_aug <- tour_fit1 %>%
+  augment() %>%
+  filter(.model == "damped") 
+
+# residuals against time
+tour_damped_aug %>% autoplot(.resid)
+
+tour_fit1 %>% 
+  select(damped) %>% 
+  gg_tsresiduals()
+
+# fitted values vs residuals
+
+tour_damped_aug %>% 
+  ggplot(aes(x=.fitted, y=.resid)) + 
+  geom_point()
+```
+
+# Qn 11
+
+```{r}
+ausnz_arrivals <- aus_arrivals %>% 
+  filter(Origin == "NZ")
+
+ausnz_arrivals %>% 
+  autoplot(Arrivals/1000)
+```
+
+the visits are steadily increasing over time, with larger seasonal variations at a higher level
+
+```{r}
+ausnz_arrivals %>% 
+  distinct(Quarter) %>% 
+  arrange(desc(Quarter))
+
+ausnz_train <- ausnz_arrivals %>% 
+  filter_index(. ~ "2010 Q3")
+
+ausnz_test <- ausnz_arrivals %>% 
+  anti_join(ausnz_train, by="Quarter")
+
+ausnz_fit <- ausnz_train %>% 
+  model(ETS(Arrivals))
+
+# get parameters
+tidy(ausnz_fit)
+
+# get model printout
+report(ausnz_fit)
+
+ausnz_fit %>% 
+  forecast(h = "2 years") %>% 
+  autoplot(ausnz_train) +
+  autolayer(ausnz_test)
+
+
+```
+
+Multiplicative seasonality is necessary because the seasonality increases in magnitude as the level increases
+
+```{r}
+
+ausnz_fit_multi <- ausnz_train %>% 
+  model(
+    "ETS" = ETS(Arrivals),
+    "ETS Add" = ETS(log(Arrivals) ~ error("A") + trend("A") + season("A")),
+    "snaive" = SNAIVE(Arrivals),
+    "decomp" = decomposition_model(
+      STL(log(Arrivals)),
+      ETS(season_adjust)
+    )
+  )
+
+ausnz_fc <- ausnz_fit_multi %>% 
+  forecast(h = "2 years")
+
+ausnz_fc %>% 
+  accuracy(ausnz_test) %>% 
+  arrange(RMSE)
+```
+
+```{r}
+ausnz_fit_ETS <- ausnz_fit_multi %>% 
+  select(ETS)  
+
+ausnz_fit_ETS %>%
+  gg_tsresiduals()
+
+augment(ausnz_fit_ETS) %>% 
+  ggplot(aes(x = .fitted, y = .resid)) +
+  geom_point()
+```
+
+Residuals look good, there's no auto correlation, and the residuals vs fitted makes sense. The residuals seem to be a bit more skewed on the negative side, and there are larger positive residuals
+
+One thing that would be interesting would be to compare the residual by quarter to see if there are any trends there
+
+```{r}
+start_time <- Sys.time()
+
+stretch <- ausnz_train %>% 
+  stretch_tsibble(.init=12)
+
+modelled <- stretch %>% 
+  model(
+    "ETS" = ETS(Arrivals),
+    "ETS Add" = ETS(log(Arrivals) ~ error("A") + trend("A") + season("A")),
+    "snaive" = SNAIVE(Arrivals),
+    "decomp" = decomposition_model(
+      STL(log(Arrivals)),
+      ETS(season_adjust)
+    )
+  )
+
+my_cv_fc <- modelled %>% 
+  forecast(h=1)
+
+end_time <- Sys.time()
+
+(run_time <- end_time - start_time)
+
+
+(test <- my_cv_fc %>% 
+  accuracy(ausnz_train))
+
+# stretch
+# modelled
+# my_cv_fc %>% accuracy(myseries)
+```
+
+\
+In the validation forecast, the decomposition method gives the best forecast instead of the non-damped ETS. I think that's a better forecast because the non-damped ETS seemed to be just a fluke
+
+Also need to look into what's an appropriate level for the initial window. I think 12 months is a bit short
+
+# Qn 12
+
+```{r}
+aus_production
+
+stretch <- aus_production %>%
+  stretch_tsibble(.init = 20) # quarterly daa, so inital window of 5 years
+
+# stretch
+
+modelled <- stretch %>% 
+  model(
+  "snaive" = SNAIVE(Cement)
+)
+
+fc <- modelled %>% 
+  forecast(h = 1)
+
+# fc
+
+acc_1 <- fc %>% 
+  accuracy(aus_production)
+
+fc_4 <- modelled %>% 
+  forecast(h = 4)
+
+fc_4
+
+fc_4_only <- fc_4 %>% 
+  group_by(.id) %>% 
+  filter(row_number() == n()) %>% 
+  ungroup()
+
+fc
+fc_4_only
+
+acc_4 <- fc_4_only %>% 
+  accuracy(aus_production)
+
+acc_1
+acc_4
+
+#yes the errors increase when you forecast longer out
+
+```
+
+Here's some code copied from 5.10 of FPP 3rd ed that also does something similar, but allows us to plot out the accuracy of the CV at different forecast horizons. The keys are:
+
+-   Group by .id
+
+-   set h = row_number()
+
+-   Ungroup and convert back to fable (?)
+
+-   in the accuracy function, specify by "h" and "model"
+
+```{r}
+google_2015_tr <- google_2015 %>%
+  stretch_tsibble(.init = 3, .step = 1)
+
+fc <- google_2015_tr %>%
+  model(RW(Close ~ drift())) %>%
+  forecast(h = 8) %>%
+  group_by(.id) %>%
+  mutate(h = row_number()) %>%
+  ungroup() %>%
+  as_fable(response = "Close", distribution = Close)
+
+fc %>%
+  accuracy(google_2015, by = c("h", ".model")) %>%
+  ggplot(aes(x = h, y = RMSE)) +
+  geom_point()
+```
+
+#  Qn 13
+
+```{r}
+
+(input_data <- aus_production)
+(data_index <- index(input_data))
+
+(last_index <- input_data %>% 
+  slice(n()) %>% 
+  select(all_of(data_index)) %>% 
+  rename(end_date = all_of(data_index)) %>% 
+  mutate(start_date = yearquarter(paste(year(end_date)-3, " Q", quarter(end_date)))) #this needs to be generalized
+)
 ```
