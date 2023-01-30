@@ -145,8 +145,8 @@ china_fit2 <- china %>%
     "boxcox" = ETS(box_cox(GDP, lambda) ~ error("A") + trend("Ad") + season("N"))
   )
 
-#combine this into the original mable china_fit
-#I don't know if there's an easier way to combine two mables? but this works :/
+# combine this into the original mable china_fit
+# I don't know if there's an easier way to combine two mables? but this works :/
 
 merge(china_fit, china_fit2)
 
@@ -652,13 +652,79 @@ fc %>%
 
 ```{r}
 
-(input_data <- aus_production)
+aus_prod_beer <- aus_production %>% 
+  select(index(aus_production), Beer) %>% 
+  drop_na()
+
+aus_prod_bricks <- aus_production %>% 
+  select(index(aus_production), Bricks) %>% 
+  drop_na()
+
+(input_data <- aus_prod_beer)
 (data_index <- index(input_data))
+
+# Get the index 3 years from the end.
+# There must be an easier way to do this?
 
 (last_index <- input_data %>% 
   slice(n()) %>% 
   select(all_of(data_index)) %>% 
   rename(end_date = all_of(data_index)) %>% 
-  mutate(start_date = yearquarter(paste(year(end_date)-3, " Q", quarter(end_date)))) #this needs to be generalized
+  mutate(start_date = yearquarter(as_date(end_date) - years(3)) + 1) #this needs to be generalized
 )
+
+test_data <- input_data %>% 
+  filter_index(as.character(last_index$start_date) ~ .)
+
+#test_data
+
+#index(input_data)
+
+train_data <- input_data %>% 
+  anti_join(test_data, by = index_var(input_data))
+
+nrow(input_data)
+nrow(test_data)
+nrow(train_data)
+```
+
+```{r}
+
+model_obj <- train_data %>% 
+  model(
+    "ets" = ETS(Beer),
+    "naive" = SNAIVE(Beer),
+    "dcmp" = decomposition_model(
+      STL(Beer), 
+      NAIVE(season_adjust)
+    )
+  )
+
+fc_obj <- model_obj %>% 
+  forecast(h = "3 years")
+
+fc_obj %>% autoplot()
+
+fc_obj %>% accuracy(test_data)
+
+# need to add box-cox 
+# need to add the other time series
+```
+
+# Qn 14
+
+```{r}
+
+tour_total <- tourism %>% 
+  #group_by(Quarter) %>% 
+  #group_by_key() %>%  
+  summarize(Trips = sum(Trips))
+
+tour_total
+
+model_tour <- tour_total %>% model(
+  ETS(Trips)
+)
+
+report(model_tour)
 ```
