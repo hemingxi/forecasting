@@ -8,22 +8,54 @@ date: "2023-02-02"
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+## Qn 2
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+The plots below show that there is high level of correlation between the previous level of the stock and the next level of the stock, indicating that we should take a first difference.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+```{r}
 
-```{r cars}
-summary(cars)
+gafa_stock %>% distinct(Symbol)
+
+a_stock <- gafa_stock %>% 
+  filter(Symbol == "AMZN")
+
+a_stock %>% 
+  ACF() %>% 
+  autoplot()
+
+a_stock %>% 
+  PACF() %>% 
+  autoplot()
 ```
 
-## Including Plots
+# Qn 3
 
-You can also embed plots, for example:
+```{r}
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+global_economy %>% head()
+global_economy %>% distinct(Country)
+
+turkey_ec <- global_economy %>% 
+  filter(Country == "Turkey")
+
+turkey_ec %>% autoplot(GDP)
+turkey_ec %>% autoplot(difference(GDP))
+
+turk_feat <- turkey_ec %>%
+  features(GDP, features = guerrero)
+(lambda <- turk_feat %>%
+  pull(lambda_guerrero))
+
+turkey_ec %>%
+  autoplot(box_cox(GDP, lambda))
+
+turkey_ec <- turkey_ec %>% 
+  mutate(box_cox_gdp = box_cox(GDP, lambda)) %>% 
+  mutate(diff_box_cox_gdp = difference(box_cox_gdp))
+
+head(turkey_ec)
+
+turkey_ec %>% autoplot(diff_box_cox_gdp)
+
+# add do stationarity test
 ```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
