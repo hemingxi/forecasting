@@ -8,23 +8,52 @@ date: "2023-02-02"
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+```{r, results='hide', message=FALSE}
+
+install.packages("data.table")
+install.packages("readr")
+install.packages("USgas")
+install.packages("readxl")
+install.packages("ggdist")
+#install.packages("urca")
+
+```
+
+```{r}
+library(data.table) 
+library(fpp3)
+library(readr)
+library(USgas)
+library(scales)
+library(readxl)
+library(ggdist)
+#library(urca)
+
+```
+
 ## Qn 2
 
 The plots below show that there is high level of correlation between the previous level of the stock and the next level of the stock, indicating that we should take a first difference.
+
+The slow drop in ACF is an indication that the series needs to be differenced.
+
+A convenient way to produce a time plot, ACF plot and PACF plot in one command is to use the gg_tsdisplay() function with plot_type = "partial
 
 ```{r}
 
 gafa_stock %>% distinct(Symbol)
 
+gafa_stock
+
 a_stock <- gafa_stock %>% 
   filter(Symbol == "AMZN")
 
 a_stock %>% 
-  ACF() %>% 
+  ACF(Close) %>% 
   autoplot()
 
 a_stock %>% 
-  PACF() %>% 
+  PACF(Close) %>% 
   autoplot()
 ```
 
@@ -38,9 +67,11 @@ global_economy %>% distinct(Country)
 turkey_ec <- global_economy %>% 
   filter(Country == "Turkey")
 
+# take first difference and plot it
 turkey_ec %>% autoplot(GDP)
 turkey_ec %>% autoplot(difference(GDP))
 
+# apply the box_cox transform
 turk_feat <- turkey_ec %>%
   features(GDP, features = guerrero)
 (lambda <- turk_feat %>%
@@ -57,5 +88,175 @@ head(turkey_ec)
 
 turkey_ec %>% autoplot(diff_box_cox_gdp)
 
-# add do stationarity test
+# add do stationary test
+
+turkey_ec %>% features(diff_box_cox_gdp, c(unitroot_kpss, unitroot_ndiffs))
+turkey_ec %>% features(GDP, c(unitroot_kpss, unitroot_ndiffs))
+
 ```
+
+```{r}
+
+# some testing code to figure out the best way to pull the index and keys from a tsibble
+
+key_vars(aus_accommodation)
+index(aus_accommodation)
+
+typeof(key(aus_accommodation)) # returns a list of symbols
+typeof(key(aus_accommodation)[[1]]) # this is a symbol
+typeof(index(aus_accommodation)) # this is a symbol
+
+test <- c(key(aus_accommodation), index(aus_accommodation))
+
+# actual code
+
+(tas_ac <- aus_accommodation %>% 
+  filter(State == "Tasmania") %>% 
+  select( index(aus_accommodation), all_of(key_vars(aus_accommodation)), Takings) # is there a better way to select the key?
+)
+
+tas_ac %>% autoplot(Takings)
+
+# this requires a seasonal difference
+
+tas_ac <- tas_ac %>% 
+  mutate(s_diff_takings = difference(Takings, 12))
+
+tas_ac %>% autoplot(s_diff_takings)
+
+tas_ac %>% features(s_diff_takings, c(unitroot_kpss, unitroot_ndiffs))
+
+# the p-value is > .1 so there is no evidence of a non-stationary series
+
+```
+
+
+```{r}
+
+souvenirs %>% autoplot(Sales)
+
+souvenirs <- souvenirs %>% mutate(
+  log_sales = log(Sales),
+  s_diff_sales = difference(Sales, 12),
+  diff_diff_sales = difference(s_diff_sales)
+)
+
+souvenirs %>% autoplot(log_sales)
+souvenirs %>% autoplot(s_diff_sales)
+souvenirs %>% autoplot(diff_diff_sales)
+
+souvenirs %>% features(log_sales, c(unitroot_kpss, unitroot_ndiffs, unitroot_nsdiffs))
+souvenirs %>% features(s_diff_sales, c(unitroot_kpss, unitroot_ndiffs, unitroot_nsdiffs))
+souvenirs %>% features(diff_diff_sales, c(unitroot_kpss, unitroot_ndiffs, unitroot_nsdiffs))
+
+
+# based on the tests, we need to first take a seasonal difference then a first differece
+
+```
+
+# Qn 4 and 5
+Skipping because I get the point
+
+# Qn 6
+
+A higher level for phi means that the series tends to look less random and stay above or below 0 for an extended period of time
+by the time phi gets to 1, then it's a random walk
+
+Note that the PACF plot is sometimes used to determine the AR level. That's how PACF is measured, the correlation between two lags, removing the correlation caused by the intermediate lags.
+
+We can see in the PACF and ACF plots that correlation between lags is high, but only as a side effect of the correlation between the first lag being very very high.
+
+The motivation behind an AR model is that sometimes past values of a variable gives you information to help you predict the future value!!
+
+```{r}
+
+phi = 1
+
+y <- numeric(100)
+e <- rnorm(100)
+for(i in 2:100)
+  y[i] <- phi*y[i-1] + e[i]
+sim <- tsibble(idx = seq_len(100), y = y, index = idx)
+
+sim %>% autoplot(y)
+
+sim %>% gg_tsdisplay(y, plot_type = "partial") 
+
+```
+
+## Qn 6c
+
+The MA model means that past innovations affect future values of the variable. 
+
+Notice that each value of can be thought of as a weighted moving average of the past few forecast errors 
+
+Note that the ACF plot can sometimes be used to determine the MA level. ACF is calculated as just the auto correlation between different lags. The PACF is showing a sinusoidal pattern because the moment you drop the error from 1 period ago, it generates a "negative" partial autocorrelation
+
+Finally, the motivation behind having an MA model is that you are averaging out a few of the past errors (almost like ETS) to help you make a prediction for what the future error will be.
+
+MA models are called "Short Memory" models because the shocks get forgotten. But AR models are called "Long Memory" models because the shocks stay in the past variable which gets expoentially decayed
+
+```{r}
+
+theta = 1
+number_iterations = 300
+
+y <- numeric(number_iterations)
+e <- rnorm(number_iterations)
+for(i in 2:number_iterations)
+  y[i] <- e[i] + theta*e[i-1]
+sim <- tsibble(idx = seq_len(number_iterations), y = y, index = idx)
+
+sim %>% autoplot(y)
+
+sim %>% gg_tsdisplay(y, plot_type = "partial") 
+
+```
+
+
+```{r}
+phi = 0.6
+theta = 0.6
+number_iterations = 100
+
+y <- numeric(number_iterations)
+e <- rnorm(number_iterations)
+for(i in 2:number_iterations)
+  y[i] <- phi*y[i-1] + e[i] + theta*e[i-1] # there must be a vectorized implementation
+sim <- tsibble(idx = seq_len(number_iterations), y = y, index = idx)
+
+sim %>% autoplot(y)
+
+
+```
+
+The non-stationary series oscillates back and forth very frequently
+
+```{r}
+
+phi = -0.8
+theta = 0.3
+number_iterations = 100
+
+y <- numeric(number_iterations)
+e <- rnorm(number_iterations)
+for(i in 2:number_iterations)
+  y[i] <- phi*y[i-1] + e[i] + theta*e[i-1] # there must be a vectorized implementation
+sim <- tsibble(idx = seq_len(number_iterations), y = y, index = idx)
+
+sim %>% autoplot(y)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
