@@ -130,7 +130,6 @@ tas_ac %>% features(s_diff_takings, c(unitroot_kpss, unitroot_ndiffs))
 
 ```
 
-
 ```{r}
 
 souvenirs %>% autoplot(Sales)
@@ -155,12 +154,12 @@ souvenirs %>% features(diff_diff_sales, c(unitroot_kpss, unitroot_ndiffs, unitro
 ```
 
 # Qn 4 and 5
+
 Skipping because I get the point
 
 # Qn 6
 
-A higher level for phi means that the series tends to look less random and stay above or below 0 for an extended period of time
-by the time phi gets to 1, then it's a random walk
+A higher level for phi means that the series tends to look less random and stay above or below 0 for an extended period of time by the time phi gets to 1, then it's a random walk
 
 Note that the PACF plot is sometimes used to determine the AR level. That's how PACF is measured, the correlation between two lags, removing the correlation caused by the intermediate lags.
 
@@ -186,9 +185,9 @@ sim %>% gg_tsdisplay(y, plot_type = "partial")
 
 ## Qn 6c
 
-The MA model means that past innovations affect future values of the variable. 
+The MA model means that past innovations affect future values of the variable.
 
-Notice that each value of can be thought of as a weighted moving average of the past few forecast errors 
+Notice that each value of can be thought of as a weighted moving average of the past few forecast errors
 
 Note that the ACF plot can sometimes be used to determine the MA level. ACF is calculated as just the auto correlation between different lags. The PACF is showing a sinusoidal pattern because the moment you drop the error from 1 period ago, it generates a "negative" partial autocorrelation
 
@@ -212,7 +211,6 @@ sim %>% autoplot(y)
 sim %>% gg_tsdisplay(y, plot_type = "partial") 
 
 ```
-
 
 ```{r}
 phi = 0.6
@@ -248,15 +246,75 @@ sim %>% autoplot(y)
 
 ```
 
+# Qn 7
+We got an ARIMA(0, 2, 1) model without logging it
+We get a ARIMA(0, 1, 0) with drift when we log it
 
+Maybe it'd be good to log the model because the residual variance looks a lot higher in the later years, and the residuals are right skewed.
 
+```{r}
+aus_airpassengers %>% autoplot(Passengers)
+aus_airpassengers %>% autoplot(log(Passengers))
 
+model_obj <- aus_airpassengers %>% 
+  model(ARIMA(log(Passengers)))
+  
+report(model_obj)
 
+model_obj %>% gg_tsresiduals()
+  
+fc <- model_obj %>% forecast(h = "10 years")
 
+fc %>% autoplot(aus_airpassengers)
 
+```
 
+```{r}
+aus_pax <- aus_airpassengers %>% 
+  mutate(log_pax = log(Passengers))
 
+model_obj <- aus_pax %>% 
+  model(
+    arima021 = ARIMA(Passengers ~ pdq(0, 2, 1) + 0),
+    arima010 = ARIMA(Passengers ~ pdq(0, 1, 0) + 1), 
+    arima212 = ARIMA(Passengers ~ pdq(2, 1, 2) + 1),
+    #arima212noc = ARIMA(Passengers ~ pdq(2, 1, 2) + 0),
+  )
 
+model_obj
 
+fc <- model_obj %>% 
+  forecast(h = "10 years")
 
+fc %>% filter(.model %in% c("arima021", "arima010", "arima212")) %>% 
+  autoplot(aus_pax, level = NULL)
+
+fc %>% filter(.model %in% c("arima021", "arima010", "arima212")) %>% 
+  autoplot(level = NULL)
+
+```
+
+Hmm, I'm not really sure if I'm supposed to be comparing the logged or non-logged versions of the models and that's a bit confusing to me.
+
+To answer qn D, when we take out the constant from the ARIMA(2, 1, 2) model, the model produces an error indicating "non-stationary AR part from CSS", which I think has to do with a stationary condition? Look into this next time!
+
+The model that is twice differences grows much faster than the other models
+The model that has the 2 AR terms tend to have forecasts that oscillates up and down compared to the simple MA model. This is because the MA model forecast has to assume that future errors are 0.
+
+## Qn 7c
+When we add the constant, the model warns us that this is not a safe operation. The resulting model blows up very quickly
+```{r}
+
+model_obj <- aus_pax %>% 
+  model(
+    arima021 = ARIMA(Passengers ~ pdq(0, 2, 1) + 0),
+    arima021poly = ARIMA(Passengers ~ pdq(0, 2, 1) + 1)
+  )
+
+fc <- model_obj %>% 
+  forecast(h = "10 years")
+
+fc %>% autoplot(aus_pax, level=NULL)
+
+```
 
