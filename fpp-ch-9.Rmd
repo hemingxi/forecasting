@@ -296,7 +296,8 @@ fc %>% filter(.model %in% c("arima021", "arima010", "arima212")) %>%
 
 Hmm, I'm not really sure if I'm supposed to be comparing the logged or non-logged versions of the models and that's a bit confusing to me.
 
-To answer qn D, when we take out the constant from the ARIMA(2, 1, 2) model, the model produces an error indicating "non-stationary AR part from CSS", which I think has to do with a stationary condition? Look into this next time!
+To answer qn D, when we take out the constant from the ARIMA(2, 1, 2) model, the model produces an error indicating "non-stationary AR part from CSS", which I think has to do with the coefficients falling outside the bounds, see the following link:
+https://stackoverflow.com/questions/7233288/non-stationary-seasonal-ar-part-from-css-error-in-r
 
 The model that is twice differences grows much faster than the other models
 The model that has the 2 AR terms tend to have forecasts that oscillates up and down compared to the simple MA model. This is because the MA model forecast has to assume that future errors are 0.
@@ -315,6 +316,64 @@ fc <- model_obj %>%
   forecast(h = "10 years")
 
 fc %>% autoplot(aus_pax, level=NULL)
+
+```
+
+# Qn 8
+
+Residuals are slightly negative skewed.
+
+ETS model does not grow as much as the ARIMA. The AICc is a lot worse, though I don't think it's comparable.
+
+```{r}
+us_gdp <- global_economy %>% 
+  filter(Country == "United States") %>% 
+  select(Country, Year, GDP)
+
+us_gdp %>% autoplot(GDP)
+
+lambda <- us_gdp %>%
+  features(GDP, guerrero) %>% 
+  pull(lambda_guerrero)
+
+model_obj <- us_gdp %>% 
+  model(
+    auto_model = ARIMA(box_cox(GDP, lambda)),
+    arima111 = ARIMA(box_cox(GDP, lambda) ~ pdq(1, 1, 1)),
+    full_search = ARIMA(box_cox(GDP, lambda), stepwise=FALSE),
+    ETS = ETS(GDP)
+)
+
+model_obj
+
+model_obj %>% 
+  select(auto_model) %>% 
+  report()
+
+model_obj %>% 
+  select(ETS) %>% 
+  report()
+
+selected_model <-model_obj %>% 
+  select(auto_model)
+
+selected_model
+
+selected_model %>% gg_tsresiduals()
+
+us_gdp_aug <- selected_model %>% 
+  augment()
+
+us_gdp_aug %>% autoplot(GDP) +
+  autolayer(us_gdp_aug, .fitted)
+
+fc_obj <- model_obj %>% 
+  forecast(h = "10 years")
+
+fc_obj %>% filter(.model %in% c("auto_model", "ETS"))
+
+fc_obj %>% filter(.model %in% c("auto_model", "ETS")) %>% 
+  autoplot(us_gdp, level=NULL)
 
 ```
 
