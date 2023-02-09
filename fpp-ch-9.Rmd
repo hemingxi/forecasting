@@ -377,3 +377,79 @@ fc_obj %>% filter(.model %in% c("auto_model", "ETS")) %>%
 
 ```
 
+# Qn 9
+
+The time plot is seasonal throughout the year. The seasonal variations are proportional to size of the plot
+
+```{r}
+aus_arrivals
+
+aus_arrivals %>%  distinct(Origin)
+
+aus_jap <- aus_arrivals %>% 
+  filter(Origin == "US")
+
+aus_jap %>% autoplot(Arrivals)
+
+aus_jap_transform <- aus_jap %>% 
+  transmute(
+    arr = Arrivals,
+    log_arr = log(Arrivals),
+    s_arr = difference(log(Arrivals), 12),
+    d_s_arr = difference(s_arr)
+  ) 
+
+aus_jap_transform  %>% 
+  pivot_longer(-Quarter, names_to = "Type", values_to = "Trans_Value") %>% 
+  mutate(Type = factor(Type, levels = c(
+    "arr",
+    "log_arr",
+    "s_arr",
+    "d_s_arr" ))
+  ) %>% 
+  ggplot(aes(x=Quarter, y=Trans_Value)) +
+  geom_line() +
+  facet_grid(vars(Type), scales = "free_y")
+
+```
+Run the unit root tests. This indicates that we want to log, sdiff, and diff
+
+```{r}
+
+aus_jap_transform %>% 
+  features(log_arr, unitroot_nsdiffs)
+
+aus_jap_transform %>% 
+  features(s_arr, unitroot_ndiffs)
+
+aus_jap_transform %>% 
+  features(d_s_arr, unitroot_ndiffs)
+
+```
+
+Look at the ACF/PACF Graphs. 
+
+The PACF has significant auto-correlations at lag 4, indicating a seasonal ARIMA would be appropriate 
+
+```{r}
+
+aus_jap_transform %>% gg_tsdisplay(d_s_arr, plot_type = "partial") 
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
