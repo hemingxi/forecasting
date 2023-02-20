@@ -429,15 +429,56 @@ aus_jap_transform %>%
 
 Look at the ACF/PACF Graphs. 
 
-The PACF has significant auto-correlations at lag 4, indicating a seasonal ARIMA would be appropriate 
+The PACF has significant auto-correlations at lag 4, indicating a seasonal ARIMA would be appropriate
+
+Because of the significant lags at PACF2, we will choose an AR(2), with one seasonal difference and one first difference
 
 ```{r}
 
 aus_jap_transform %>% gg_tsdisplay(d_s_arr, plot_type = "partial") 
 
 ```
+We will try both a ARIMA(2,1,0)(1,1,0) and the automatic model. We see the automatic model has a much lower RMSE
 
+```{r}
 
+# aus_jap
+
+arr_model <- aus_jap  %>% 
+  model(
+    arima210011 = ARIMA(log(Arrivals) ~ pdq(2, 1, 0) + PDQ(1, 1, 0)),
+    arima_auto = ARIMA(log(Arrivals))
+  )
+
+arr_model %>% select(arima210011) %>% report()
+arr_model %>% select(arima_auto) %>% report()
+
+arr_model %>% accuracy()
+
+```
+we see the automatic model does not predict as much seasonal variation. 
+
+```{r}
+
+arr_fc <- arr_model %>% 
+  forecast(h = 10)
+
+arr_fc %>% autoplot(aus_jap, level = NULL) 
+
+```
+comparing residuals of the two models
+
+```{r}
+
+arr_model %>% 
+  select(arima_auto) %>% 
+  gg_tsresiduals()
+
+arr_model %>% 
+  select(arima210011) %>% 
+  gg_tsresiduals()
+
+```
 
 
 
