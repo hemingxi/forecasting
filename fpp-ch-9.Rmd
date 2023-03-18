@@ -15,7 +15,7 @@ install.packages("readr")
 install.packages("USgas")
 install.packages("readxl")
 install.packages("ggdist")
-#install.packages("urca")
+install.packages("urca")
 
 ```
 
@@ -438,7 +438,7 @@ Because of the significant lags at PACF2, we will choose an AR(2), with one seas
 aus_jap_transform %>% gg_tsdisplay(d_s_arr, plot_type = "partial") 
 
 ```
-We will try both a ARIMA(2,1,0)(1,1,0) and the automatic model. We see the automatic model has a much lower RMSE
+We will try both a ARIMA(2,1,0)(1,1,0) and the automatic model. We see the automatic model has a much lower RMSE. Ideally we would look at the out of sample tests for this, using some testing data. but I don't feel like doing this right now
 
 ```{r}
 
@@ -466,7 +466,9 @@ arr_fc <- arr_model %>%
 arr_fc %>% autoplot(aus_jap, level = NULL) 
 
 ```
-comparing residuals of the two models
+Comparing residuals of the two models, the automatic model is much better:
+* there are not as many significant ACFs
+* the residual plot does not look as skewed
 
 ```{r}
 
@@ -481,11 +483,88 @@ arr_model %>%
 ```
 
 
+# Qn 10 
+
+## 10a
+
+Produce an STL decomposition of the data and describe the trend and seasonality.
+
+```{r}
+# Cmd + Option + I creates a new chunk
+# on mac, Cmd + Shift + M gives you the pipe operater
+
+us_employment %>% distinct(Title)
+
+us_tot_private <- us_employment %>% 
+  filter(Title == "Total Private")
+
+us_tot_private %>% autoplot(Employed)
+
+us_emp_model <- us_tot_private |> 
+  model(
+    STL(Employed)
+  )
+
+us_emp_model |> 
+  components() |> 
+  autoplot()
 
 
+```
+
+## 10b
+
+Do the data need transforming? If so, find a suitable transformation.
+
+Yes, the data requires transofmring. We can see that the seasonal pattern is increasing over time, indicating that we should do a log or box_cox transf
+
+```{r}
+(us_feat <- us_tot_private %>%
+  features(Employed, features = guerrero))
+(lambda <- us_feat %>%
+  pull(lambda_guerrero))
+
+us_emp_model <- us_tot_private |> 
+  model(
+    STL(box_cox(Employed, lambda))
+  )
+
+us_emp_model |> 
+  components() |> 
+  autoplot()
+
+```
+
+# 10c
+Check the seasonality - from STL decomposition - which months have the highest and lowest? Do that gg plot that has 12 plots (each month) and shows within each month, employment by month.
+Are the data stationary? If not, find an appropriate differencing which yields stationary data.
+Identify a couple of ARIMA models that might be useful in describing the time series. Which of your models is the best according to their AICc values?
+Estimate the parameters of your best model and do diagnostic testing on the residuals. Do the residuals resemble white noise? If not, try to find another ARIMA model which fits better.
+Forecast the next 3 years of data. Get the latest figures from https://fred.stlouisfed.org/categories/11 to check the accuracy of your forecasts.
+Eventually, the prediction intervals are so wide that the forecasts are not particularly useful. How many years of forecasts do you think are sufficiently accurate to be usable?
 
 
+# 11 and 12
 
+This is interesting because it conmpares seasonal model to non-seasonal model on seasonally adjusted STL data
+
+# 13
+
+This is interesting because you're fitting the model for all series
+
+# 14 - Skip
+
+# 15
+
+This is interesting because of hand calculating the forecasts
+
+# 16
+
+Identify the series
+
+# 17 
+
+Working with Quandl
 
 
 
