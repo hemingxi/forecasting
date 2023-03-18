@@ -8,6 +8,8 @@ date: "2023-02-02"
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+# Load Packages
+
 ```{r, results='hide', message=FALSE}
 
 install.packages("data.table")
@@ -516,7 +518,7 @@ us_emp_model |>
 
 Do the data need transforming? If so, find a suitable transformation.
 
-Yes, the data requires transofmring. We can see that the seasonal pattern is increasing over time, indicating that we should do a log or box_cox transf
+Yes, the data requires transforming. We can see that the seasonal pattern is increasing over time, indicating that we should do a log or box_cox transform.
 
 ```{r}
 (us_feat <- us_tot_private %>%
@@ -535,10 +537,53 @@ us_emp_model |>
 
 ```
 
-# 10c
+## 10c
 Check the seasonality - from STL decomposition - which months have the highest and lowest? Do that gg plot that has 12 plots (each month) and shows within each month, employment by month.
+  Seasonality is not a big component compared to the level, but summers tend to have higher employment, which makes sense due to summer seasonal work
+
 Are the data stationary? If not, find an appropriate differencing which yields stationary data.
+
+```{r}
+
+us_tot_private <- us_tot_private |> 
+  mutate(box_emp = box_cox(Employed, lambda)) 
+
+us_tot_private |> 
+  gg_subseries(Employed)
+
+us_tot_private |> features(box_emp, c(unitroot_kpss, unitroot_ndiffs)) # the data is not stationary (as we can also tell visually)
+
+us_tot_private |> features(difference(box_emp, lag = 12), c(unitroot_kpss, unitroot_ndiffs)) # after taking the first seasonal differene, we don't need another difference.
+
+```
+Let's plot out the transformations that we did.
+
+```{r}
+us_tot_trans <- us_tot_private %>% 
+  transmute(
+    emp = Employed,
+    box_emp = box_cox(Employed, lambda),
+    log_emp = log(Employed),
+    s_diff_box_emp = difference(box_emp, 12),
+  )
+
+us_tot_trans  %>% 
+  pivot_longer(-Month, names_to = "Type", values_to = "Trans_Value") %>% 
+  mutate(Type = factor(Type, levels = c(
+    "emp",
+    "box_emp",
+    "log_emp",
+    "s_diff_box_emp" ))
+  ) %>% 
+  ggplot(aes(x=Month, y=Trans_Value)) +
+  geom_line() +
+  facet_grid(vars(Type), scales = "free_y")
+```
+
+## 10d
+
 Identify a couple of ARIMA models that might be useful in describing the time series. Which of your models is the best according to their AICc values?
+
 Estimate the parameters of your best model and do diagnostic testing on the residuals. Do the residuals resemble white noise? If not, try to find another ARIMA model which fits better.
 Forecast the next 3 years of data. Get the latest figures from https://fred.stlouisfed.org/categories/11 to check the accuracy of your forecasts.
 Eventually, the prediction intervals are so wide that the forecasts are not particularly useful. How many years of forecasts do you think are sufficiently accurate to be usable?
