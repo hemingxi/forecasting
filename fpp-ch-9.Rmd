@@ -613,7 +613,7 @@ us_model |> pivot_longer(!Series_ID, names_to = "Model name",
 glance(us_model) |> arrange(AICc) |> select(.model:BIC)
 
 ```
-## 10e 
+## 10e
 
 Estimate the parameters of your best model and do diagnostic testing on the residuals. Do the residuals resemble white noise? If not, try to find another ARIMA model which fits better.
 
@@ -636,8 +636,36 @@ augment(us_model) |>
 
 ```
 
+## 10f
 
 Forecast the next 3 years of data. Get the latest figures from https://fred.stlouisfed.org/categories/11 to check the accuracy of your forecasts.
+
+
+```{r}
+us_fc <- us_model |> 
+  select(Series_ID, stepwise) |> 
+  forecast(h = "3 years")
+
+us_tot_private_10 <- us_tot_private |> 
+  filter_index("2010 1" ~ . )
+
+us_fc |> autoplot(us_tot_private_10)
+
+```
+Get updated data:
+
+```{r}
+library(fredr)
+# https://cran.r-project.org/web/packages/fredr/vignettes/fredr.html
+
+
+us_employment
+```
+
+  
+
+## 10g
+
 Eventually, the prediction intervals are so wide that the forecasts are not particularly useful. How many years of forecasts do you think are sufficiently accurate to be usable?
 
 
