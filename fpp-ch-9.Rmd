@@ -553,7 +553,9 @@ us_tot_private |>
 
 us_tot_private |> features(box_emp, c(unitroot_kpss, unitroot_ndiffs)) # the data is not stationary (as we can also tell visually)
 
-us_tot_private |> features(difference(box_emp, lag = 12), c(unitroot_kpss, unitroot_ndiffs)) # after taking the first seasonal differene, we don't need another difference.
+us_tot_private |> features(difference(box_emp, lag = 12), c(unitroot_kpss, unitroot_ndiffs)) 
+# after taking the first seasonal difference, the test is saying we don't need another difference.
+# however, based on the graphs, another difference would be good to take
 
 ```
 Let's plot out the transformations that we did.
@@ -565,6 +567,7 @@ us_tot_trans <- us_tot_private %>%
     box_emp = box_cox(Employed, lambda),
     log_emp = log(Employed),
     s_diff_box_emp = difference(box_emp, 12),
+    d_sd_box_emp = difference(s_diff_box_emp)
   )
 
 us_tot_trans  %>% 
@@ -573,7 +576,8 @@ us_tot_trans  %>%
     "emp",
     "box_emp",
     "log_emp",
-    "s_diff_box_emp" ))
+    "s_diff_box_emp",
+    "d_sd_box_emp"))
   ) %>% 
   ggplot(aes(x=Month, y=Trans_Value)) +
   geom_line() +
@@ -585,9 +589,31 @@ us_tot_trans  %>%
 Identify a couple of ARIMA models that might be useful in describing the time series. Which of your models is the best according to their AICc values?
 
 ```{r}
+us_tot_private <- us_tot_private |>
+  mutate(sd_box_emp = difference(box_emp,12))
+
+us_tot_private |> 
+  gg_tsdisplay(sd_box_emp, plot_type = "partial")
+
+us_tot_private |> 
+  gg_tsdisplay(difference(sd_box_emp), plot_type = "partial")
+
+us_model <- us_tot_private |>  
+  model(
+    ARIMA_ = ARIMA(box_cox(Employed, lambda) ~ pdq(3, 1, 0) + PDQ(2, 1, 0)),
+    stepwise = ARIMA(box_cox(Employed, lambda)),
+    search = ARIMA(box_cox(Employed, lambda), stepwise=FALSE)
+  )
+
+us_model
+
+us_model |> pivot_longer(!Series_ID, names_to = "Model name",
+                         values_to = "Orders")
+
+glance(us_model) |> arrange(AICc) |> select(.model:BIC)
 
 ```
-
+## 10e 
 
 Estimate the parameters of your best model and do diagnostic testing on the residuals. Do the residuals resemble white noise? If not, try to find another ARIMA model which fits better.
 Forecast the next 3 years of data. Get the latest figures from https://fred.stlouisfed.org/categories/11 to check the accuracy of your forecasts.
