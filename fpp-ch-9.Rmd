@@ -616,6 +616,27 @@ glance(us_model) |> arrange(AICc) |> select(.model:BIC)
 ## 10e 
 
 Estimate the parameters of your best model and do diagnostic testing on the residuals. Do the residuals resemble white noise? If not, try to find another ARIMA model which fits better.
+
+The residuals look close to white noise, but the ljung_box test says otherwise. there still seems to be some auto correlation and the residuals do not look normal.
+
+```{r}
+tidy(us_model) |> filter(.model == "stepwise")
+
+us_model
+
+us_model |> 
+  select(Series_ID, stepwise) |> 
+  gg_tsresiduals()
+
+# add test for white noise -> ljung_box
+
+augment(us_model) |>
+  filter(.model=='stepwise') |>
+  features(.innov, ljung_box, lag = 24, dof = 7) # include the dof for the constant?
+
+```
+
+
 Forecast the next 3 years of data. Get the latest figures from https://fred.stlouisfed.org/categories/11 to check the accuracy of your forecasts.
 Eventually, the prediction intervals are so wide that the forecasts are not particularly useful. How many years of forecasts do you think are sufficiently accurate to be usable?
 
