@@ -691,17 +691,35 @@ us_fc |> autoplot(us_emp_future) +
 Check accuracy of the forecasts:
 
 ```{r}
-# to do
-install.packages("pryr")
+# check memory usage
+# install.packages("pryr")
+# object.size(us_tot_private)
 
-object.size(us_tot_private)
+us_fc |> 
+  accuracy(us_emp_future)
+
+# Out-of-sample forecast accuracy requires the future values to compare with.
+# All available future data will be used, and a warning will be given if some
+# data for the forecast window is unavailable.
+
 ```
 
-  
 
 ## 10g
 
 Eventually, the prediction intervals are so wide that the forecasts are not particularly useful. How many years of forecasts do you think are sufficiently accurate to be usable?
+
+```{r}
+us_fc <- us_model |> 
+  select(Series_ID, stepwise) |> 
+  forecast(h = "5 years")
+
+us_fc |> autoplot(us_emp_future) +
+  autolayer(us_tot_private_10)
+
+#show the percentage + or - of the fc over time
+
+```
 
 
 # 11 and 12
