@@ -658,8 +658,43 @@ Get updated data:
 library(fredr)
 # https://cran.r-project.org/web/packages/fredr/vignettes/fredr.html
 
+fredr_set_key("ff9d2e8a91c73c6f06a510ec92db5d35")
 
+us_employment |> 
+  filter(Title == "Total Private") |> 
+  as_tibble() |> 
+  group_by(Series_ID) |> 
+  summarise(max_month = max(Month))
+
+us_emp_future_temp <- fredr(
+  series_id = "CEU0500000001",
+  observation_start = as.Date("2019-10-01"),
+  observation_end = as.Date("2023-03-01")
+)
+
+us_emp_future_temp
 us_employment
+
+us_emp_future <- us_emp_future_temp |> 
+  transmute(
+    Month = yearmonth(date),
+    Series_ID = series_id,
+    Title = "Total Private",
+    Employed = value
+    ) |> 
+  as_tsibble(key = Series_ID, index = Month)
+
+us_fc |> autoplot(us_emp_future) +
+  autolayer(us_tot_private_10)
+
+```
+Check accuracy of the forecasts:
+
+```{r}
+# to do
+install.packages("pryr")
+
+object.size(us_tot_private)
 ```
 
   
@@ -671,7 +706,7 @@ Eventually, the prediction intervals are so wide that the forecasts are not part
 
 # 11 and 12
 
-This is interesting because it conmpares seasonal model to non-seasonal model on seasonally adjusted STL data
+This is interesting because it compares seasonal model to non-seasonal model on seasonally adjusted STL data
 
 # 13
 
