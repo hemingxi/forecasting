@@ -717,7 +717,23 @@ us_fc <- us_model |>
 us_fc |> autoplot(us_emp_future) +
   autolayer(us_tot_private_10)
 
-#show the percentage + or - of the fc over time
+fc_mod <- us_fc |> 
+  hilo() |> 
+  mutate(
+      hilo_95_perc = `95%`/.mean-1,
+      lower = hilo_95_perc$lower,
+      upper = hilo_95_perc$upper
+    ) 
+  
+
+fc_mod
+
+fc_mod |> 
+  ggplot(mapping = aes(x=Month)) +
+  geom_line(aes(y=upper)) +
+  geom_line(aes(y=lower)) +
+  scale_y_continuous(labels = scales::percent) +
+  ggtitle("% Confidence Interval Compared to Mean for ARIMA Forecasts")
 
 ```
 
