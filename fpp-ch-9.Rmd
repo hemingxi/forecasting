@@ -2,6 +2,9 @@
 title: "fpp-ch-9"
 output: html_document
 date: "2023-02-02"
+editor_options: 
+  markdown: 
+    wrap: 72
 ---
 
 ```{r setup, include=FALSE}
@@ -35,11 +38,15 @@ library(ggdist)
 
 ## Qn 2
 
-The plots below show that there is high level of correlation between the previous level of the stock and the next level of the stock, indicating that we should take a first difference.
+The plots below show that there is high level of correlation between the
+previous level of the stock and the next level of the stock, indicating
+that we should take a first difference.
 
-The slow drop in ACF is an indication that the series needs to be differenced.
+The slow drop in ACF is an indication that the series needs to be
+differenced.
 
-A convenient way to produce a time plot, ACF plot and PACF plot in one command is to use the gg_tsdisplay() function with plot_type = "partial
+A convenient way to produce a time plot, ACF plot and PACF plot in one
+command is to use the gg_tsdisplay() function with plot_type = "partial
 
 ```{r}
 
@@ -161,13 +168,20 @@ Skipping because I get the point
 
 # Qn 6
 
-A higher level for phi means that the series tends to look less random and stay above or below 0 for an extended period of time by the time phi gets to 1, then it's a random walk
+A higher level for phi means that the series tends to look less random
+and stay above or below 0 for an extended period of time by the time phi
+gets to 1, then it's a random walk
 
-Note that the PACF plot is sometimes used to determine the AR level. That's how PACF is measured, the correlation between two lags, removing the correlation caused by the intermediate lags.
+Note that the PACF plot is sometimes used to determine the AR level.
+That's how PACF is measured, the correlation between two lags, removing
+the correlation caused by the intermediate lags.
 
-We can see in the PACF and ACF plots that correlation between lags is high, but only as a side effect of the correlation between the first lag being very very high.
+We can see in the PACF and ACF plots that correlation between lags is
+high, but only as a side effect of the correlation between the first lag
+being very very high.
 
-The motivation behind an AR model is that sometimes past values of a variable gives you information to help you predict the future value!!
+The motivation behind an AR model is that sometimes past values of a
+variable gives you information to help you predict the future value!!
 
 ```{r}
 
@@ -187,15 +201,25 @@ sim %>% gg_tsdisplay(y, plot_type = "partial")
 
 ## Qn 6c
 
-The MA model means that past innovations affect future values of the variable.
+The MA model means that past innovations affect future values of the
+variable.
 
-Notice that each value of can be thought of as a weighted moving average of the past few forecast errors
+Notice that each value of can be thought of as a weighted moving average
+of the past few forecast errors
 
-Note that the ACF plot can sometimes be used to determine the MA level. ACF is calculated as just the auto correlation between different lags. The PACF is showing a sinusoidal pattern because the moment you drop the error from 1 period ago, it generates a "negative" partial autocorrelation
+Note that the ACF plot can sometimes be used to determine the MA level.
+ACF is calculated as just the auto correlation between different lags.
+The PACF is showing a sinusoidal pattern because the moment you drop the
+error from 1 period ago, it generates a "negative" partial
+autocorrelation
 
-Finally, the motivation behind having an MA model is that you are averaging out a few of the past errors (almost like ETS) to help you make a prediction for what the future error will be.
+Finally, the motivation behind having an MA model is that you are
+averaging out a few of the past errors (almost like ETS) to help you
+make a prediction for what the future error will be.
 
-MA models are called "Short Memory" models because the shocks get forgotten. But AR models are called "Long Memory" models because the shocks stay in the past variable which gets expoentially decayed
+MA models are called "Short Memory" models because the shocks get
+forgotten. But AR models are called "Long Memory" models because the
+shocks stay in the past variable which gets expoentially decayed
 
 ```{r}
 
@@ -249,10 +273,12 @@ sim %>% autoplot(y)
 ```
 
 # Qn 7
-We got an ARIMA(0, 2, 1) model without logging it
-We get a ARIMA(0, 1, 0) with drift when we log it
 
-Maybe it'd be good to log the model because the residual variance looks a lot higher in the later years, and the residuals are right skewed.
+We got an ARIMA(0, 2, 1) model without logging it We get a ARIMA(0, 1,
+0) with drift when we log it
+
+Maybe it'd be good to log the model because the residual variance looks
+a lot higher in the later years, and the residuals are right skewed.
 
 ```{r}
 aus_airpassengers %>% autoplot(Passengers)
@@ -296,16 +322,25 @@ fc %>% filter(.model %in% c("arima021", "arima010", "arima212")) %>%
 
 ```
 
-Hmm, I'm not really sure if I'm supposed to be comparing the logged or non-logged versions of the models and that's a bit confusing to me.
+Hmm, I'm not really sure if I'm supposed to be comparing the logged or
+non-logged versions of the models and that's a bit confusing to me.
 
-To answer qn D, when we take out the constant from the ARIMA(2, 1, 2) model, the model produces an error indicating "non-stationary AR part from CSS", which I think has to do with the coefficients falling outside the bounds, see the following link:
-https://stackoverflow.com/questions/7233288/non-stationary-seasonal-ar-part-from-css-error-in-r
+To answer qn D, when we take out the constant from the ARIMA(2, 1, 2)
+model, the model produces an error indicating "non-stationary AR part
+from CSS", which I think has to do with the coefficients falling outside
+the bounds, see the following link:
+<https://stackoverflow.com/questions/7233288/non-stationary-seasonal-ar-part-from-css-error-in-r>
 
-The model that is twice differences grows much faster than the other models
-The model that has the 2 AR terms tend to have forecasts that oscillates up and down compared to the simple MA model. This is because the MA model forecast has to assume that future errors are 0.
+The model that is twice differences grows much faster than the other
+models The model that has the 2 AR terms tend to have forecasts that
+oscillates up and down compared to the simple MA model. This is because
+the MA model forecast has to assume that future errors are 0.
 
 ## Qn 7c
-When we add the constant, the model warns us that this is not a safe operation. The resulting model blows up very quickly
+
+When we add the constant, the model warns us that this is not a safe
+operation. The resulting model blows up very quickly
+
 ```{r}
 
 model_obj <- aus_pax %>% 
@@ -325,7 +360,8 @@ fc %>% autoplot(aus_pax, level=NULL)
 
 Residuals are slightly negative skewed.
 
-ETS model does not grow as much as the ARIMA. The AICc is a lot worse, though I don't think it's comparable.
+ETS model does not grow as much as the ARIMA. The AICc is a lot worse,
+though I don't think it's comparable.
 
 ```{r}
 us_gdp <- global_economy %>% 
@@ -381,7 +417,8 @@ fc_obj %>% filter(.model %in% c("auto_model", "ETS")) %>%
 
 # Qn 9
 
-The time plot is seasonal throughout the year. The seasonal variations are proportional to size of the plot
+The time plot is seasonal throughout the year. The seasonal variations
+are proportional to size of the plot
 
 ```{r}
 aus_arrivals
@@ -414,7 +451,9 @@ aus_jap_transform  %>%
   facet_grid(vars(Type), scales = "free_y")
 
 ```
-Run the unit root tests. This indicates that we want to log, sdiff, and diff
+
+Run the unit root tests. This indicates that we want to log, sdiff, and
+diff
 
 ```{r}
 
@@ -429,18 +468,24 @@ aus_jap_transform %>%
 
 ```
 
-Look at the ACF/PACF Graphs. 
+Look at the ACF/PACF Graphs.
 
-The PACF has significant auto-correlations at lag 4, indicating a seasonal ARIMA would be appropriate
+The PACF has significant auto-correlations at lag 4, indicating a
+seasonal ARIMA would be appropriate
 
-Because of the significant lags at PACF2, we will choose an AR(2), with one seasonal difference and one first difference
+Because of the significant lags at PACF2, we will choose an AR(2), with
+one seasonal difference and one first difference
 
 ```{r}
 
 aus_jap_transform %>% gg_tsdisplay(d_s_arr, plot_type = "partial") 
 
 ```
-We will try both a ARIMA(2,1,0)(1,1,0) and the automatic model. We see the automatic model has a much lower RMSE. Ideally we would look at the out of sample tests for this, using some testing data. but I don't feel like doing this right now
+
+We will try both a ARIMA(2,1,0)(1,1,0) and the automatic model. We see
+the automatic model has a much lower RMSE. Ideally we would look at the
+out of sample tests for this, using some testing data. but I don't feel
+like doing this right now
 
 ```{r}
 
@@ -458,7 +503,8 @@ arr_model %>% select(arima_auto) %>% report()
 arr_model %>% accuracy()
 
 ```
-we see the automatic model does not predict as much seasonal variation. 
+
+we see the automatic model does not predict as much seasonal variation.
 
 ```{r}
 
@@ -468,9 +514,10 @@ arr_fc <- arr_model %>%
 arr_fc %>% autoplot(aus_jap, level = NULL) 
 
 ```
-Comparing residuals of the two models, the automatic model is much better:
-* there are not as many significant ACFs
-* the residual plot does not look as skewed
+
+Comparing residuals of the two models, the automatic model is much
+better: \* there are not as many significant ACFs \* the residual plot
+does not look as skewed
 
 ```{r}
 
@@ -484,12 +531,12 @@ arr_model %>%
 
 ```
 
-
-# Qn 10 
+# Qn 10
 
 ## 10a
 
-Produce an STL decomposition of the data and describe the trend and seasonality.
+Produce an STL decomposition of the data and describe the trend and
+seasonality.
 
 ```{r}
 # Cmd + Option + I creates a new chunk
@@ -518,7 +565,9 @@ us_emp_model |>
 
 Do the data need transforming? If so, find a suitable transformation.
 
-Yes, the data requires transforming. We can see that the seasonal pattern is increasing over time, indicating that we should do a log or box_cox transform.
+Yes, the data requires transforming. We can see that the seasonal
+pattern is increasing over time, indicating that we should do a log or
+box_cox transform.
 
 ```{r}
 (us_feat <- us_tot_private %>%
@@ -538,10 +587,15 @@ us_emp_model |>
 ```
 
 ## 10c
-Check the seasonality - from STL decomposition - which months have the highest and lowest? Do that gg plot that has 12 plots (each month) and shows within each month, employment by month.
-  Seasonality is not a big component compared to the level, but summers tend to have higher employment, which makes sense due to summer seasonal work
 
-Are the data stationary? If not, find an appropriate differencing which yields stationary data.
+Check the seasonality - from STL decomposition - which months have the
+highest and lowest? Do that gg plot that has 12 plots (each month) and
+shows within each month, employment by month. Seasonality is not a big
+component compared to the level, but summers tend to have higher
+employment, which makes sense due to summer seasonal work
+
+Are the data stationary? If not, find an appropriate differencing which
+yields stationary data.
 
 ```{r}
 
@@ -558,6 +612,7 @@ us_tot_private |> features(difference(box_emp, lag = 12), c(unitroot_kpss, unitr
 # however, based on the graphs, another difference would be good to take
 
 ```
+
 Let's plot out the transformations that we did.
 
 ```{r}
@@ -586,7 +641,9 @@ us_tot_trans  %>%
 
 ## 10d
 
-Identify a couple of ARIMA models that might be useful in describing the time series. Which of your models is the best according to their AICc values?
+Identify a couple of ARIMA models that might be useful in describing the
+time series. Which of your models is the best according to their AICc
+values?
 
 ```{r}
 us_tot_private <- us_tot_private |>
@@ -613,11 +670,16 @@ us_model |> pivot_longer(!Series_ID, names_to = "Model name",
 glance(us_model) |> arrange(AICc) |> select(.model:BIC)
 
 ```
+
 ## 10e
 
-Estimate the parameters of your best model and do diagnostic testing on the residuals. Do the residuals resemble white noise? If not, try to find another ARIMA model which fits better.
+Estimate the parameters of your best model and do diagnostic testing on
+the residuals. Do the residuals resemble white noise? If not, try to
+find another ARIMA model which fits better.
 
-The residuals look close to white noise, but the ljung_box test says otherwise. there still seems to be some auto correlation and the residuals do not look normal.
+The residuals look close to white noise, but the ljung_box test says
+otherwise. there still seems to be some auto correlation and the
+residuals do not look normal.
 
 ```{r}
 tidy(us_model) |> filter(.model == "stepwise")
@@ -638,8 +700,9 @@ augment(us_model) |>
 
 ## 10f
 
-Forecast the next 3 years of data. Get the latest figures from https://fred.stlouisfed.org/categories/11 to check the accuracy of your forecasts.
-
+Forecast the next 3 years of data. Get the latest figures from
+<https://fred.stlouisfed.org/categories/11> to check the accuracy of
+your forecasts.
 
 ```{r}
 us_fc <- us_model |> 
@@ -652,6 +715,7 @@ us_tot_private_10 <- us_tot_private |>
 us_fc |> autoplot(us_tot_private_10)
 
 ```
+
 Get updated data:
 
 ```{r}
@@ -688,6 +752,7 @@ us_fc |> autoplot(us_emp_future) +
   autolayer(us_tot_private_10)
 
 ```
+
 Check accuracy of the forecasts:
 
 ```{r}
@@ -704,10 +769,11 @@ us_fc |>
 
 ```
 
-
 ## 10g
 
-Eventually, the prediction intervals are so wide that the forecasts are not particularly useful. How many years of forecasts do you think are sufficiently accurate to be usable?
+Eventually, the prediction intervals are so wide that the forecasts are
+not particularly useful. How many years of forecasts do you think are
+sufficiently accurate to be usable?
 
 ```{r}
 us_fc <- us_model |> 
@@ -737,12 +803,13 @@ fc_mod |>
 
 ```
 
-
 # 11
 
-This is interesting because it compares seasonal model to non-seasonal model on seasonally adjusted STL data
+This is interesting because it compares seasonal model to non-seasonal
+model on seasonally adjusted STL data
 
-Choose one of the following seasonal time series: the Australian production of electricity, cement, or gas (from aus_production).
+Choose one of the following seasonal time series: the Australian
+production of electricity, cement, or gas (from aus_production).
 
 # 11a
 
@@ -779,19 +846,34 @@ aus_prod |>
   ggplot(aes(x = Quarter, y = values)) +
   geom_line() +
   facet_grid(rows = vars(transformation), scales = "free_y")
-  
-
 ```
 
-Are the data stationary? If not, find an appropriate differencing which yields stationary data.
-Identify a couple of ARIMA models that might be useful in describing the time series. Which of your models is the best according to their AIC values?
-Estimate the parameters of your best model and do diagnostic testing on the residuals. Do the residuals resemble white noise? If not, try to find another ARIMA model which fits better.
-Forecast the next 24 months of data using your preferred model.
-Compare the forecasts obtained using ETS().
+Are the data stationary? If not, find an appropriate differencing which
+yields stationary data.
+
+```{r}
+aus_prod_diff <- aus_prod |> 
+  mutate(d_box_elec = difference(box_elec, 4))
+
+aus_prod_diff |> autoplot(d_box_elec)
+
+aus_prod_diff |> features(d_box_elec, ndiffs)
+```
+
+Identify a couple of ARIMA models that might be useful in describing the
+time series. Which of your models is the best according to their AIC
+values? Estimate the parameters of your best model and do diagnostic
+testing on the residuals. Do the residuals resemble white noise? If not,
+try to find another ARIMA model which fits better. Forecast the next 24
+months of data using your preferred model. Compare the forecasts
+obtained using ETS().
 
 # 12
 
-For the same time series you used in the previous exercise, try using a non-seasonal model applied to the seasonally adjusted data obtained from STL. Compare the forecasts with those obtained in the previous exercise. Which do you think is the best approach?
+For the same time series you used in the previous exercise, try using a
+non-seasonal model applied to the seasonally adjusted data obtained from
+STL. Compare the forecasts with those obtained in the previous exercise.
+Which do you think is the best approach?
 
 # 13
 
@@ -807,14 +889,6 @@ This is interesting because of hand calculating the forecasts
 
 Identify the series
 
-# 17 
+# 17
 
 Working with Quandl
-
-
-
-
-
-
-
-
