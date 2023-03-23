@@ -738,9 +738,60 @@ fc_mod |>
 ```
 
 
-# 11 and 12
+# 11
 
 This is interesting because it compares seasonal model to non-seasonal model on seasonally adjusted STL data
+
+Choose one of the following seasonal time series: the Australian production of electricity, cement, or gas (from aus_production).
+
+# 11a
+
+Do the data need transforming? If so, find a suitable transformation.
+
+```{r}
+aus_production
+
+aus_production |> autoplot(Electricity)
+
+aus_production |> 
+  as_tibble() |> 
+  summarise(max_qtr = max(Quarter))
+
+# max date in data is 2010 Q2
+
+lambda <- aus_production |> 
+  features(Electricity, features = guerrero) |> 
+  pull(lambda_guerrero)
+
+
+aus_prod <- aus_production |> 
+  transmute(
+    elec = Electricity,
+    box_elec = box_cox(Electricity, lambda)
+    )
+
+aus_prod |> 
+  pivot_longer(-Quarter, names_to = "transformation", values_to = "values") |> 
+  mutate(transformation = factor(transformation, levels = c(
+      "elec", 
+       "box_elec"
+      ))) |> 
+  ggplot(aes(x = Quarter, y = values)) +
+  geom_line() +
+  facet_grid(rows = vars(transformation), scales = "free_y")
+  
+
+```
+
+Are the data stationary? If not, find an appropriate differencing which yields stationary data.
+Identify a couple of ARIMA models that might be useful in describing the time series. Which of your models is the best according to their AIC values?
+Estimate the parameters of your best model and do diagnostic testing on the residuals. Do the residuals resemble white noise? If not, try to find another ARIMA model which fits better.
+Forecast the next 24 months of data using your preferred model.
+Compare the forecasts obtained using ETS().
+
+# 12
+
+For the same time series you used in the previous exercise, try using a non-seasonal model applied to the seasonally adjusted data obtained from STL. Compare the forecasts with those obtained in the previous exercise. Which do you think is the best approach?
 
 # 13
 
