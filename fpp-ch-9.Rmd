@@ -811,7 +811,7 @@ model on seasonally adjusted STL data
 Choose one of the following seasonal time series: the Australian
 production of electricity, cement, or gas (from aus_production).
 
-# 11a
+## 11a
 
 Do the data need transforming? If so, find a suitable transformation.
 
@@ -848,25 +848,61 @@ aus_prod |>
   facet_grid(rows = vars(transformation), scales = "free_y")
 ```
 
+## 11b
+
 Are the data stationary? If not, find an appropriate differencing which
 yields stationary data.
 
 ```{r}
 aus_prod_diff <- aus_prod |> 
-  mutate(d_box_elec = difference(box_elec, 4))
+  mutate(
+    sd_box_elec = difference(box_elec, 4),
+    d_sd_box_elec = difference(sd_box_elec),
+    sd_elec = difference(box_elec, 4),
+    d_sd_elec = difference(box_elec)
+    )
 
-aus_prod_diff |> autoplot(d_box_elec)
 
-aus_prod_diff |> features(d_box_elec, ndiffs)
+aus_prod_diff |> 
+  pivot_longer(-Quarter, names_to = "transformation", values_to = "values") |> 
+  mutate(transformation = factor(transformation, levels = c(
+      "elec",
+      "sd_elec",
+      "d_sd_elec",
+      "box_elec",
+      "sd_box_elec",
+      "d_sd_box_elec"
+      ))) |> 
+  ggplot(aes(x = Quarter, y = values)) +
+  geom_line() +
+  facet_grid(rows = vars(transformation), scales = "free_y")
+
+aus_prod_diff |> features(sd_box_elec, unitroot_ndiffs)
+aus_prod_diff |> features(sd_elec, unitroot_ndiffs)
+
+# we need another difference after taking the seasonal diff
+
 ```
+
+## 11c
 
 Identify a couple of ARIMA models that might be useful in describing the
 time series. Which of your models is the best according to their AIC
-values? Estimate the parameters of your best model and do diagnostic
-testing on the residuals. Do the residuals resemble white noise? If not,
-try to find another ARIMA model which fits better. Forecast the next 24
-months of data using your preferred model. Compare the forecasts
-obtained using ETS().
+values?
+
+## 11d
+
+Estimate the parameters of your best model and do diagnostic testing on
+the residuals. Do the residuals resemble white noise? If not, try to
+find another ARIMA model which fits better.
+
+## 11e
+
+Forecast the next 24 months of data using your preferred model.
+
+## 11f 
+
+Compare the forecasts obtained using ETS().
 
 # 12
 
