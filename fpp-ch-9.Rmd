@@ -890,17 +890,44 @@ Identify a couple of ARIMA models that might be useful in describing the
 time series. Which of your models is the best according to their AIC
 values?
 
+```{r}
+# I don't know if this is stationary at this point. I've tried nothing and I'm all out of ideas
+# the values get quite higih in the recent time period, I'm not sure what's causing this anomaly
+
+aus_prod_diff
+
+aus_prod_diff |> gg_tsdisplay(d_sd_box_elec, plot_type = "partial")
+
+# with this plot we can choose a seasonal AR of P = 4 and a nonseasonal MA of q = 4
+# adding a constant with a tiwce difference causes a quadratic trend
+
+aus_mod <- aus_prod_diff |> 
+  model(
+    #selected_c = ARIMA(box_cox(elec, lambda) ~ 1  + pdq(0, 1, 4) + PDQ(4, 1, 0)),
+    selected_nc = ARIMA(box_cox(elec, lambda) ~ 0  + pdq(0, 1, 4) + PDQ(4, 1, 0)),
+    auto = ARIMA(box_cox(elec, lambda)),
+    search = ARIMA(box_cox(elec, lambda), stepwise = FALSE)
+  )
+
+aus_mod |> glance()
+aus_mod
+```
+
 ## 11d
 
 Estimate the parameters of your best model and do diagnostic testing on
 the residuals. Do the residuals resemble white noise? If not, try to
 find another ARIMA model which fits better.
 
+```{r}
+
+```
+
 ## 11e
 
 Forecast the next 24 months of data using your preferred model.
 
-## 11f 
+## 11f
 
 Compare the forecasts obtained using ETS().
 
