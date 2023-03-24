@@ -11,9 +11,10 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 
 can_fit %>% components() # gets you the level slope components of ETS
+can_fit |> report() #gives you the model printout
 can_fit %>% tidy() # get model coefficients
 can_fit %>% fitted() # get only fitted values, this is less useful
-can_fit %>% augment() # get exports and fitted values and residuals in the same dataset
+can_fit %>%t augment() # get exports and fitted values and residuals in the same dataset
 can_fit |> accuracy() # gives you RMSE, etc.
 ec_can
 

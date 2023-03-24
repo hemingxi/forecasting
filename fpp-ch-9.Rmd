@@ -910,7 +910,7 @@ aus_mod <- aus_prod_diff |>
   )
 
 aus_mod |> glance()
-aus_mod
+aus_mod |> pivot_longer(everything(), names_to = "Model_Name", values_to = "Model_Order")
 ```
 
 ## 11d
@@ -919,7 +919,30 @@ Estimate the parameters of your best model and do diagnostic testing on
 the residuals. Do the residuals resemble white noise? If not, try to
 find another ARIMA model which fits better.
 
+The search model seems to have the least parameters, so we'll try that one.
+
+Residuals look okay, though the variance seems to have gone up in recent years. Would be something to investigate. 
+
+The innovation residuals just barely pass the ljung_box test. Recall that innovation residuals are on the transformed scale:
+  w = log(y)
+  innov_resid = w - w_hat
+
 ```{r}
+
+aus_mod
+
+sel_aus_mod <- aus_mod |> 
+  select(search) 
+
+sel_aus_mod |> 
+  report()
+  #tidy()
+
+sel_aus_mod |> gg_tsresiduals()
+
+sel_aus_mod |> 
+  augment() |> 
+  features(.innov, ljung_box, lag = 24, dof = 5)
 
 ```
 
@@ -927,9 +950,49 @@ find another ARIMA model which fits better.
 
 Forecast the next 24 months of data using your preferred model.
 
+```{r}
+
+fc <- sel_aus_mod |> 
+  forecast(h="2 years") 
+
+fc |> autoplot(
+    aus_prod_diff |> 
+      filter_index("1990 Q1" ~ . )
+  )
+
+```
+
 ## 11f
 
 Compare the forecasts obtained using ETS().
+
+ETS and ARIMA both capture the spiked pattern. ETS is predicting a faster rate of increase into the future.
+
+```{r}
+ets_mod <- aus_prod_diff |> 
+  model(
+    ets_model = ETS(box_cox(elec, lambda)),
+    arima_model = ARIMA(box_cox(elec, lambda), stepwise = FALSE)
+  )
+
+ets_mod |> 
+  select(ets_model) |> 
+  report()
+
+ets_mod |> 
+  forecast(h = "5 years") |> 
+  autoplot(
+    aus_prod_diff |> filter_index( "1995 Q1" ~ . ), level = NULL
+  )
+
+```
+
+Set up the one-step-ahead validation and also the training/testing split for this data.
+
+```{r}
+
+```
+
 
 # 12
 
@@ -937,6 +1000,11 @@ For the same time series you used in the previous exercise, try using a
 non-seasonal model applied to the seasonally adjusted data obtained from
 STL. Compare the forecasts with those obtained in the previous exercise.
 Which do you think is the best approach?
+
+```{r}
+
+```
+
 
 # 13
 
