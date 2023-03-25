@@ -990,7 +990,37 @@ ets_mod |>
 Set up the one-step-ahead validation and also the training/testing split for this data.
 
 ```{r}
-#test
+
+aus_train <- aus_prod_diff |> 
+  filter_index( . ~ "1999 Q4" )
+
+aus_test <- aus_prod_diff |> 
+  filter_index( "2000 Q1" ~ "2005 Q4")
+
+aus_mod_train <- aus_train |> model(
+  ets_model = ETS(box_cox(elec, lambda)),
+  ets_damp = ETS(box_cox(elec, lambda) ~ error("M") + trend("Ad") + season("M")),
+  arima_model = ARIMA(box_cox(elec, lambda), stepwise = FALSE)
+)
+
+ets_mod 
+aus_mod_train |> glance()
+aus_mod_train |> pivot_longer(everything(), names_to = "Model Name", values_to = "Order")
+
+aus_fc <- aus_mod_train |> 
+  forecast(h = "5 years")
+
+aus_fc |> accuracy(aus_test) 
+# the ARIMA model is performing much better over 5 years with lower RMSE
+# the rate of increase for the ETS model is too high - which is something that they mentioned in the text
+# we can also add try a dampened model
+
+aus_fc |> autoplot(
+    aus_train |> filter_index("1985 Q1" ~ . ), 
+    level = NULL
+  ) +
+  autolayer(aus_test)
+
 ```
 
 
