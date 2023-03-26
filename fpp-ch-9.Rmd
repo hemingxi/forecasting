@@ -7,24 +7,11 @@ editor_options:
     wrap: 72
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
 # Load Packages
 
-```{r, results='hide', message=FALSE}
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
 
-install.packages("data.table")
-install.packages("readr")
-install.packages("USgas")
-install.packages("readxl")
-install.packages("ggdist")
-install.packages("urca")
-
-```
-
-```{r}
 library(data.table) 
 library(fpp3)
 library(readr)
@@ -32,7 +19,25 @@ library(USgas)
 library(scales)
 library(readxl)
 library(ggdist)
-#library(urca)
+library(urca)
+
+```
+
+
+
+```{r, results='hide', message=FALSE}
+
+# install.packages("data.table")
+# install.packages("readr")
+# install.packages("USgas")
+# install.packages("readxl")
+# install.packages("ggdist")
+# install.packages("urca")
+
+```
+
+```{r}
+
 
 ```
 
@@ -1015,11 +1020,10 @@ aus_fc |> accuracy(aus_test)
 # the rate of increase for the ETS model is too high - which is something that they mentioned in the text
 # we can also add try a dampened model
 
-aus_fc |> autoplot(
-    aus_train |> filter_index("1985 Q1" ~ . ), 
-    level = NULL
-  ) +
-  autolayer(aus_test)
+aus_train_plot <- aus_train |> filter_index("1985 Q1" ~ . )
+
+aus_fc |> autoplot(aus_test, level = NULL) +
+  autolayer(aus_train_plot)
 
 ```
 
@@ -1036,23 +1040,108 @@ The text says: the decomposition_model() function, which allows you to compute f
 I'm not sure if the additive decomposition will be much good since the ETS was picking multiplicative seasonality. But maybe having the variable transformed will make a difference
 
 ```{r}
+# test out the STL function
+aus_train |>
+  model(STL(box_cox(elec, lambda), robust = TRUE)) |> 
+  components() |> 
+  autoplot()
 
-# sample code from Ch 5.7
-fit_dcmp <- us_retail_employment |>
-  model(stlf = decomposition_model(
-    STL(Employed ~ trend(window = 7), robust = TRUE),
-    NAIVE(season_adjust)
-  ))
-fit_dcmp |>
-  forecast() |>
-  autoplot(us_retail_employment)+
-  labs(y = "Number of people",
-       title = "US retail employment")
+aus_train |>
+  model(STL(box_cox(elec, lambda) ~ trend(), robust = TRUE)) |> 
+  components() |> 
+  autoplot()
 
-# test out the performance of the model with/without the transformation
+aus_train |>
+  model(STL(box_cox(elec, lambda) ~ season(window = Inf), robust = TRUE)) |> 
+  components() |> 
+  autoplot()
+
+# season_year is the seasonal component
+# season_adjust is the trend + remainder component (i.e. total - season)
 
 ```
 
+
+```{r}
+
+# sample code from Ch 5.7
+fit_dcmp <- aus_train |>
+  model(
+    ets_model = ETS(box_cox(elec, lambda)),
+    #ets_damp = ETS(box_cox(elec, lambda) ~ error("M") + trend("Ad") + season("M")),
+    arima_model = ARIMA(box_cox(elec, lambda), stepwise = FALSE),
+    # stlf_arima = decomposition_model(
+    #   STL(box_cox(elec, lambda), robust = TRUE),
+    #   ARIMA(season_adjust ~ PDQ(0,0,0)) #automatic SNAIVE(season_year) - on the seasonal component
+    #   ),
+    stlf_ets = decomposition_model(
+      STL(box_cox(elec, lambda) ~ trend(), robust = TRUE),
+      ETS(season_adjust ~ season("N")) 
+      ),
+    stlf_ets_sets = decomposition_model(
+      STL(box_cox(elec, lambda) ~ trend(), robust = TRUE),
+      ETS(season_adjust ~ season("N")),
+      ETS(season_year)
+      )
+    )
+
+fit_dcmp
+
+fc_dcmp <- fit_dcmp |> 
+  forecast(h = "5 years")
+
+fc_dcmp |> autoplot(aus_test, level=NULL)
+
+fc_dcmp |> autoplot(aus_test, level=NULL) + 
+  autolayer(aus_train_plot)
+
+```
+
+The decomposition models are overestimating the future trend, and over-estimating the seasonality when forecasting using the NAIVE method.
+Is this due to the transformation? The transformation to ETS is causing it to overestimate the future trend as we see in the next chunk. 
+I'm not sure when it's appropriate to transform ETS.
+
+Let's test out the performance of the model with/without the transformation
+
+```{r}
+
+lambda <- aus_train |> 
+  features(elec, features = guerrero) |> 
+  pull(lambda_guerrero)
+
+box_fit <- aus_train |>
+  model(
+    box_ets_model = ETS(box_cox(elec, lambda)),
+    box_arima_model = ARIMA(box_cox(elec, lambda), stepwise = FALSE),
+    ets_model =  ETS(elec),
+    arima_model = ARIMA(elec, stepwise = FALSE),
+    log_ets_model =  ETS(log(elec)),
+    log_arima_model = ARIMA(log(elec), stepwise = FALSE)
+    )
+
+box_fit
+box_fit |> glance()
+
+fc_box <- box_fit |> 
+  forecast(h = "5 years")
+
+# here we see ETS model without transformation is likely the best at predicting the future
+fc_box |> 
+  filter(.model %in% c("box_ets_model", "ets_model", "log_ets_model")) |>
+  autoplot(aus_test, level=NULL)
+
+# here we see that the appropriate ARIMA transformation is key
+fc_box |> 
+  filter(.model %in% c("box_arima_model", "arima_model", "log_arima_model")) |>
+  autoplot(aus_test, level=NULL)
+
+# we see that once we switch to estimating lambda using only the training data, ETS model is performing the best here
+fc_box |> 
+  accuracy(aus_test) |> 
+  arrange(RMSE)
+
+```
+Note that we should be selecting the lambda for the box_cox using only the training data and not the testing data
 
 # 13
 
