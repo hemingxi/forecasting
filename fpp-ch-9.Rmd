@@ -1145,7 +1145,94 @@ Note that we should be selecting the lambda for the box_cox using only the train
 
 # 13
 
-This is interesting because you're fitting the model for all series
+For the Australian tourism data (from tourism):
+
+## 13a
+
+Fit ARIMA models for each time series.
+
+```{r}
+
+tourism
+
+tourism |> 
+  distinct(Region, State, Purpose) 
+
+tour_model <- tourism |> 
+  model(ARIMA(Trips))
+
+tour_model
+
+```
+
+
+## 13b
+
+Produce forecasts of your fitted models.
+
+```{r}
+
+fc_tour <- tour_model |> 
+  forecast(h = "3 years")
+
+fc_tour
+
+```
+
+
+## 13c
+
+Check the forecasts for the “Snowy Mountains” and “Melbourne” regions. Do they look reasonable?
+
+```{r}
+
+fc_tour |> distinct(Region)
+
+fc_sm_mel <- fc_tour |> 
+  filter(Region %in% c("Snowy Mountains", "Melbourne"))
+
+fc_sm_mel
+
+tour_sm_mel <- tourism |> 
+  filter(Region %in% c("Snowy Mountains", "Melbourne"))
+
+region_filter = "Melbourne"
+
+fc_sm_mel |> 
+  filter(Region == region_filter) |> 
+  ggplot() +
+  geom_line(aes(x = Quarter, y = .mean), color = "blue") + 
+  geom_line(data = tour_sm_mel |> filter(Region == region_filter), aes(x = Quarter, y = Trips)) +
+  facet_grid(vars(Purpose), scales = "free_y")
+
+```
+
+Let's look at what the modles were for Melbourne
+
+```{r}
+
+tour_model |> 
+  filter(Region %in% c("Snowy Mountains", "Melbourne"))
+
+```
+
+
+```{r}
+
+region_filter = "Snowy Mountains"
+
+fc_sm_mel |> 
+  filter(Region == region_filter) |> 
+  ggplot() +
+  geom_line(aes(x = Quarter, y = .mean), color = "blue") + 
+  geom_line(data = tour_sm_mel |> filter(Region == region_filter), aes(x = Quarter, y = Trips)) +
+  facet_grid(vars(Purpose), scales = "free_y")
+
+```
+
+Because of the low volume and noise, the only useful forecasts were for:
+ - Melbourne: Business & Visiting
+ - Snowy Mountains: Holiday
 
 # 14 - Skip
 
