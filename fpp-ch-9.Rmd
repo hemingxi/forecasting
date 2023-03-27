@@ -1240,9 +1240,129 @@ Because of the low volume and noise, the only useful forecasts were for:
 
 This is interesting because of hand calculating the forecasts
 
+Consider the number of Snowshoe Hare furs traded by the Hudson Bay Company between 1845 and 1935 (data set pelt).
+
+## 15a
+
+Produce a time plot of the time series.
+
+```{r}
+pelt
+
+pelt |> autoplot(Hare)
+```
+
+## 15b
+
+Assume you decide to fit the following model:
+
+This is an ARIMA(4, 0, 0) model with a constant
+
+```{r}
+
+pelt_model <- pelt |> 
+  model(
+    arima400 = ARIMA(Hare ~ pdq(4,0,0) + 1)
+  )
+
+pelt_model |> report()
+
+```
+
+## 15c
+
+By examining the ACF and PACF of the data, explain why this model is appropriate.
+
+We pick AR(4) becaues PACF is showing significant autocorrelations until lag 4, and the ACF is showing a decreasing sinosuidal function
+
+```{r}
+pelt |>  gg_tsdisplay(Hare, plot_type = "partial")
+```
+
+## 15 d
+
+The last five values of the series are given below. Without using the forecast() function, calculate forecasts for the next three years (1936–1939)
+
+```{r}
+pelt_sample <- pelt |>
+  filter_index( 1931 ~ 1935) |> 
+  select(-Lynx)
+
+pelt_sample
+
+cst = 30993
+parameters = c(-.22, -.01, -.29, .82)
+#output = c()
+(vec <- pelt_sample[["Hare"]])
+
+
+for(i in 1:3){
+  pred_val <- cst + sum(vec[(length(vec)-3):length(vec)] * parameters)
+  vec = c(vec, pred_val)
+}
+
+vec
+
+pelt_sample_new <- pelt_sample |> 
+  new_data(3)
+
+pelt_sample_new |> 
+  mutate(Hare = vec[(length(vec)-3+1):length(vec)])
+  
+
+
+
+```
+
+Now fit the model in R and obtain the forecasts using forecast(). How are they different from yours? Why?
+
+the forecasts are different - is it because of rounding?
+
+```{r}
+pelt_model <- pelt |> 
+  model(
+    arima400 = ARIMA(Hare ~ pdq(4,0,0) + 1)
+  )
+
+pelt_model |> report()
+
+fc_pelt
+
+fc_pelt <- pelt_model |> 
+  forecast(h = "3 years")
+
+fc_pelt |> autoplot(pelt)
+
+```
+Try again with more sig figs - yes the difference was because of rounding
+
+```{r}
+cst = 30993
+parameters = c(-.2165, -.0057, -.2891, .8219)
+#output = c()
+(vec <- pelt_sample[["Hare"]])
+
+
+for(i in 1:3){
+  pred_val <- cst + sum(vec[(length(vec)-3):length(vec)] * parameters)
+  vec = c(vec, pred_val)
+}
+
+vec
+
+pelt_sample_new <- pelt_sample |> 
+  new_data(3)
+
+pelt_sample_new |> 
+  mutate(Hare = vec[(length(vec)-3+1):length(vec)])
+```
+
+
 # 16
 
-Identify the series
+Identify the series:
+
+This is a ARIMA(3, 1, 0) series.
 
 # 17
 
