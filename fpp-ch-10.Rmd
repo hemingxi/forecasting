@@ -66,5 +66,21 @@ fc_lake |>
 
 Does the extrapolated linear trend look realistic? I don't think so, there's no reason to assume that there is an upward trend from 1920 onwards. The year to year variation is much larger
 
+Let's look at the residuals.
+
+```{r}
+tslm <- lake_mod |> 
+  select(tslm_piecewise) 
+
+tslm |> 
+  gg_tsresiduals()
+
+tslm |> 
+  augment() |> 
+  gg_tsdisplay(.resid, plot_type = "partial")
+
+```
+
+
 # Qn 2
 
