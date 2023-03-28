@@ -22,4 +22,49 @@ library(urca)
 
 ```
 
-#
+# Qn 1
+
+```{r}
+typeof(LakeHuron)
+
+lake <- LakeHuron |>  
+  as_tsibble()
+
+lake |> index()
+
+lake |> autoplot(value)
+
+lake_mod <- lake |> 
+  model(
+    tslm_piecewise = TSLM(value ~ trend(knots = c(1920))),
+    arima = ARIMA(value ~ trend(knots = c(1920)))
+  )
+
+lake_mod
+
+lake_mod |> glance()
+
+lake_mod |> 
+  select(arima) |> 
+  report()
+  
+
+lake_mod |> 
+  select(arima) |> 
+  fitted() |> 
+  autoplot(.fitted, color = "blue") +
+  autolayer(lake, value)
+
+fc_lake <- lake_mod |> 
+  forecast(h = "30 years")
+
+fc_lake |> 
+  filter(.model == "arima") |> 
+  autoplot(lake)
+
+```
+
+Does the extrapolated linear trend look realistic? I don't think so, there's no reason to assume that there is an upward trend from 1920 onwards. The year to year variation is much larger
+
+# Qn 2
+
