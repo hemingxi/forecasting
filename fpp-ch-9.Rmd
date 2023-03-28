@@ -1367,3 +1367,46 @@ This is a ARIMA(3, 1, 0) series.
 # 17
 
 Working with Quandl
+
+```{r}
+install.packages("Quandl")
+library("Quandl")
+
+y <- Quandl::Quandl("FRED/DDDI10CAA156NWDB") |> 
+  as_tsibble(index = Date)
+
+can_gdp <- y |> 
+  mutate(Year = year(Date)) |> 
+  update_tsibble(index = Year)
+
+can_gdp
+
+can_gdp |> autoplot(Value) 
+
+```
+```{r}
+can_gdp |> 
+  gg_tsdisplay(Value, plot_type = "partial")
+
+can_gdp |> 
+  gg_tsdisplay(difference(Value), plot_type = "partial")
+
+```
+
+We want to fit an ARIMA(2, 0, 0) model based on our testing
+
+```{r}
+
+#i mis-named it. this is the ratio of Canadian non-life insurance premium to GDP
+ins_mod <- can_gdp |> model(
+  arima = ARIMA(Value),
+  ets = ETS(Value)
+)
+
+fc <- ins_mod |> 
+  forecast(h = "4 years")
+
+fc |> autoplot(can_gdp)
+
+```
+There's not a lot of data, so both models are predicting a wide confidence interval. ARIMA is thinking it will revert to the mean, but ETS is predicting just the latest point flat basically.
