@@ -176,8 +176,49 @@ souv_arima |> gg_tsresiduals()
 ```
 
 
+# Qn 3
 
+```{r}
+vic_elec_daily <- vic_elec |>
+  filter(year(Time) == 2014) |>
+  index_by(Date = date(Time)) |>
+  summarise(
+    Demand = sum(Demand)/1e3,
+    Temperature = max(Temperature),
+    Holiday = any(Holiday)) |>
+  mutate(
+    Temp2 = I(pmax(Temperature-25,0)),
+    Day_Type = case_when(
+      Holiday ~ "Holiday",
+      wday(Date) %in% 2:6 ~ "Weekday",
+      TRUE ~ "Weekend"))
 
+head(vic_elec_daily)
+
+```
+
+```{r}
+vic_elec_daily |> autoplot(Demand)
+```
+
+```{r}
+vic_elec_daily |> 
+  ggplot(aes(x = Temperature, y = Demand, color = Day_Type)) +
+  geom_point()
+```
+
+```{r}
+elec_model <- vic_elec_daily |> 
+  model(ARIMA(Demand ~ Temperature + Temp2 + (Day_Type == "Weekday")))
+
+elec_model |> gg_tsresiduals()
+
+```
+We can optimize the choice of by first doing a hand selection based on the Temp*Demand graph. Then, we can try a few different knots and see which one performs the best on the testing.
+
+```{r}
+
+```
 
 
 
