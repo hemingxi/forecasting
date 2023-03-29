@@ -141,16 +141,25 @@ fc_souv |> filter(.model == "arima") |> autoplot(souv)
 
 There doesn't seem to be a significant difference in the forecasts.
 
+I want to try and plot the lower and upper bound in the same plot:
+
 ```{r}
-fc_souv |> 
+fc_souv <- fc_souv |> 
   hilo() |> 
   mutate(
     lower = `95%`$lower,
-    lower = `95%`$lower
+    upper = `95%`$upper
   )
 
+fc_souv |> head()
 
-fc_souv |> ggplot(aes(x = Month, y = Sales))
+fc_souv |> ggplot(aes(x = Month)) +
+  geom_line(aes(y = .mean), color = "blue") +
+  facet_grid(.model ~ .) +
+  geom_line(aes(y = upper), color = "blue", alpha = .25) +
+  geom_line(aes(y = lower), color = "blue", alpha = .25) +
+  geom_line(data = souv, aes(x = Month, y = Sales)) +
+  scale_y_log10()
  
 #unpack_hilo does not work with the recent update (to dplyr I think)
   unpack_hilo(`95%`)
