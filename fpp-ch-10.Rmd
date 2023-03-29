@@ -84,3 +84,110 @@ tslm |>
 
 # Qn 2
 
+```{r}
+souvenirs |> autoplot(Sales)
+
+souv <- souvenirs |> 
+  mutate(surffest = month(Month) == 3 & Month >= yearmonth("1988 Mar"))
+
+# https://stackoverflow.com/questions/6558921/boolean-operators-and
+# & is vectorized, meaning it will return a vector of trues and falses
+# && is not vectorized and will go left to right and examine one by one and short circuit
+# & should be used when creating vectors
+# && should be used for programming control-flow and is preferred in if clauses
+# You should be absolutely certain your vectors are only length 1, such as in cases where they are functions that return only length 1 booleans. You want to use the short forms if the vectors are length possibly >1. So if you're not absolutely sure, you should either check first, or use the short form and then use all and any to reduce it to length one for use in control flow statements, like if
+
+souv
+
+```
+
+Let's do the model now.
+
+```{r}
+souv_mod <- souv |> 
+  model(
+    tslm = TSLM(log(Sales) ~ surffest + trend() + season()) ,
+    arima = ARIMA(log(Sales) ~ surffest + trend() + season())
+  )
+
+souv_tslm <- souv_mod |> select(tslm) 
+souv_tslm |> report()
+
+souv_arima <- souv_mod |> select(arima) 
+souv_arima |> report()
+
+```
+
+There is a bit of a difference to the regression coefficients. The trend is still the same, but the regression coefficients can now more properly pick up the signal, instead of trying to fit the ARIMA error - i.e. if the previous month was high, then the next month will also likely be high.
+
+```{r}
+
+souv_new <- new_data(souv, n = 1*12) |> 
+  mutate(surffest = (month(Month)==3) & (Month >= yearmonth("1988 Mar")))
+
+souv_new
+
+fc_souv <- souv_mod |> 
+  forecast(new_data = souv_new) # you don't have to specify the forecast length if you give it new data 
+
+fc_souv
+
+fc_souv |> autoplot(souv)
+
+fc_souv |> filter(.model == "tslm") |> autoplot(souv)
+fc_souv |> filter(.model == "arima") |> autoplot(souv)
+
+```
+
+There doesn't seem to be a significant difference in the forecasts.
+
+```{r}
+fc_souv |> 
+  hilo() |> 
+  mutate(
+    lower = `95%`$lower,
+    lower = `95%`$lower
+  )
+
+
+fc_souv |> ggplot(aes(x = Month, y = Sales))
+ 
+#unpack_hilo does not work with the recent update (to dplyr I think)
+  unpack_hilo(`95%`)
+
+# https://stackoverflow.com/questions/74437685/unnest-dist-column-from-fabletoolsforecast-output
+#trying to figure out how to unpack the distribution object
+# fc_souv[["Sales"]][[1]]
+# 
+# typeof(fc_souv$"Sales")
+# 
+# class(fc_souv$Sales)
+# fc_souv |> summarise_all(class)
+
+```
+
+
+Check Residuals
+
+```{r}
+souv_tslm |> gg_tsresiduals()
+
+souv_arima |> gg_tsresiduals()
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
