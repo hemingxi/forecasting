@@ -235,9 +235,41 @@ aus_accommodation |>
 
 aus_accommodation |> autoplot(CPI)
 
+CPI_1 <- aus_accommodation |> 
+  pull(CPI) |> 
+  min()
+
+aus <- aus_accommodation |> 
+  mutate(
+    CPI_index = CPI / CPI_1,
+    Takings_CPI = Takings / CPI_index
+  )
+
+aus |> 
+  filter(State == "New South Wales") |> 
+  ggplot(aes(x = Date)) +
+  geom_line(aes(y = Takings)) + 
+  geom_line(aes(y = Takings_CPI), color = "blue")
+
+index(aus)
+key(aus)
+
 ```
 
 
+```{r}
+mod <- aus |> model(
+  ARIMA(Takings_CPI ~ trend(knots = yearquarter(c("2008 Q1"))) + season()) 
+)
+
+mod |> glance() # why is no information showing up for the glance?
+mod |> tidy()
+mod |> filter(State == "New South Wales") |> report()
+
+mod |> forecast(h=5) |> 
+  autoplot()
+
+```
 
 
 
