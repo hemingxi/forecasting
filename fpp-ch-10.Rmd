@@ -235,7 +235,7 @@ aus_accommodation |>
 
 aus_accommodation |> autoplot(CPI)
 
-
+```
 
 
 
