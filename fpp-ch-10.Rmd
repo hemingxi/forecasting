@@ -225,8 +225,15 @@ elec_model |> gg_tsresiduals()
 ```
 We can optimize the choice of by first doing a hand selection based on the Temp*Demand graph. Then, we can try a few different knots and see which one performs the best on the testing.
 
-```{r}
+#Qn 4
 
+```{r}
+head(aus_accommodation)
+
+aus_accommodation |> 
+  distinct(State)
+
+aus_accommodation |> autoplot(CPI)
 ```
 
 
