@@ -8,6 +8,10 @@ date: "2023-03-18"
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+# Fabletools to apply to models 
+
+You can look at the fable, fabletools, tsibble pages for more information.
+
 ```{r}
 
 can_fit %>% components() # gets you the level slope components of ETS
@@ -19,4 +23,27 @@ can_fit |> accuracy() # gives you RMSE, etc.
 ec_can
 
 ```
+
+# Typeof vs Class
+
+
+votes
+
+The class() is used to define/identify what "type" an object is from the point of view of object-oriented programming in R. So for
+
+> x <- 1:3
+> class(x)
+[1] "integer"
+any generic function that has an "integer" method will be used.
+
+typeof() gives the "type" of object from R's point of view, whilst mode() gives the "type" of object from the point of view of Becker, Chambers & Wilks (1988). The latter may be more compatible with other S implementations according to the R Language Definition manual.
+
+
+
+
+
+
+
+
+
 

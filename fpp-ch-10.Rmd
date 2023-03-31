@@ -19,6 +19,7 @@ library(scales)
 library(readxl)
 library(ggdist)
 library(urca)
+library(purrr)
 
 ```
 
@@ -259,9 +260,10 @@ key(aus)
 
 ```{r}
 mod <- aus |> model(
-  ARIMA(Takings_CPI ~ trend(knots = yearquarter(c("2008 Q1"))) + season()) 
+  arima_model = ARIMA(Takings_CPI ~ trend(knots = yearquarter(c("2008 Q1"))) + season()) 
 )
 
+mod
 mod |> glance() # why is no information showing up for the glance?
 mod |> tidy()
 mod |> filter(State == "New South Wales") |> report()
@@ -271,8 +273,130 @@ mod |> forecast(h=5) |>
 
 ```
 
+```{r}
+
+for(i in 1:nrow(mod)) {
+  print(i)
+  mod[i,] |>  
+    gg_tsresiduals() |> 
+    print()
+}
+
+```
+
+I am trying to functionally loop over and print the graphs. Can't seem to figure it out. The closes I've gotten is the code in the bottom.
 
 
+```{r}
+
+# NOT RUN {
+require(stats)
+warpbreaks
+
+by(warpbreaks[, 1:2], warpbreaks[,"tension"], summary)
+by(warpbreaks[, 1],   warpbreaks[, -1],       summary)
+by(warpbreaks, warpbreaks[,"tension"],
+   function(x) lm(breaks ~ wool, data = x))
+
+## now suppose we want to extract the coefficients by group
+tmp <- with(warpbreaks,
+            by(warpbreaks, tension,
+               function(x) lm(breaks ~ wool, data = x)))
+sapply(tmp, coef)
+# }
+
+test <- mod |> split( mod$State) 
+test |> class()
+test[1] |> as_mable() |> class()
+
+mod
+
+key(mod)
+
+###############################
+
+print_info  <- function(obj, in_key){
+  obj |> class() |> print()
+  obj |> head() |> print()
+  obj |> as_mable() |> class()
+  # obj |> 
+  #   mutate(key = in_key) |> 
+  #   setkey(key) |> 
+  #   as_mable() |> 
+  #   head() |> 
+  #   print()
+ 
+}
+
+mod |> group_by(row_number()) |>  group_walk(print_info)
+#check whether you have a ls_modl as your variables - so print your var names and var types and see what happens
+
+mtcars
+
+mtcars %>%
+  group_by(cyl) %>%
+  group_map(~ head(.x, 2))
+
+mtcars %>%
+  group_map(~ head(.x, 5))
+
+```
+
+```{r}
+
+mod |> class()
+
+test <- mod |> 
+  t() |> 
+  as.data.frame(col.names = mod[[State]]) 
+
+test
+
+test |> length()
+
+test[1] |> class()
+
+mod
+map(mod, gg_tsresiduals())
+
+print_residuals <- function(in_mable) {
+  #print(class(in_mable))
+  in_mable |> gg_tsresiduals()
+}
+
+mod |> 
+  mutate()
+
+walk(mod$arima_model, print_residuals)
+
+
+mod |> class()
+mod |> pull(arima_model) |> class()
+mod$arima_model |> class()
+
+mod
+
+mod
+mod[1,] |> gg_tsresiduals()
+mod[1,2]
+
+mod |> t() |> t() |> class()
+
+test <- mod |> group_by(State) |> group_split()
+
+test |> class()
+
+test[1] |> as_mable() |> class()
+
+print_class <- function(obj){
+  obj |> 
+    class() |> 
+    print()
+}
+
+walk(mod, class)
+
+```
 
 
 
