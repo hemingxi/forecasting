@@ -286,6 +286,8 @@ for(i in 1:nrow(mod)) {
 
 I am trying to functionally loop over and print the graphs. Can't seem to figure it out. The closes I've gotten is the code in the bottom.
 
+Maybe also read through ch 11 to see if there are any thoughts there
+
 
 ```{r}
 
