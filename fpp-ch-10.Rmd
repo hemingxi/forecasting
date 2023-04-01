@@ -240,10 +240,12 @@ CPI_1 <- aus_accommodation |>
   pull(CPI) |> 
   min()
 
+#instead of dividing by the 1st CPI, we will divide by 100 to ake it easier
+
 aus <- aus_accommodation |> 
   mutate(
-    CPI_index = CPI / CPI_1,
-    Takings_CPI = Takings / CPI_index
+    CPI_index = CPI / 100,
+    `Takings/CPI_index` = Takings / CPI_index
   )
 
 aus |> 
@@ -273,6 +275,10 @@ mod |> forecast(h=5) |>
 
 ```
 
+## 4c
+
+Check residuals.
+
 ```{r}
 
 for(i in 1:nrow(mod)) {
@@ -284,121 +290,164 @@ for(i in 1:nrow(mod)) {
 
 ```
 
-I am trying to functionally loop over and print the graphs. Can't seem to figure it out. The closes I've gotten is the code in the bottom.
-
-Maybe also read through ch 11 to see if there are any thoughts there
+I am trying to functionally loop over and print the graphs. 
 
 
 ```{r}
 
-# NOT RUN {
-require(stats)
-warpbreaks
-
-by(warpbreaks[, 1:2], warpbreaks[,"tension"], summary)
-by(warpbreaks[, 1],   warpbreaks[, -1],       summary)
-by(warpbreaks, warpbreaks[,"tension"],
-   function(x) lm(breaks ~ wool, data = x))
-
-## now suppose we want to extract the coefficients by group
-tmp <- with(warpbreaks,
-            by(warpbreaks, tension,
-               function(x) lm(breaks ~ wool, data = x)))
-sapply(tmp, coef)
-# }
-
-test <- mod |> split( mod$State) 
-test |> class()
-test[1] |> as_mable() |> class()
-
-mod
-
-key(mod)
-
-###############################
-
 print_info  <- function(obj, in_key){
-  obj |> class() |> print()
-  obj |> head() |> print()
-  obj |> as_mable() |> class()
-  # obj |> 
-  #   mutate(key = in_key) |> 
-  #   setkey(key) |> 
-  #   as_mable() |> 
-  #   head() |> 
-  #   print()
- 
+  obj |> as_mable(key = State, model = arima_model) |> gg_tsresiduals() |>  print()
 }
 
 mod |> group_by(row_number()) |>  group_walk(print_info)
-#check whether you have a ls_modl as your variables - so print your var names and var types and see what happens
-
-mtcars
-
-mtcars %>%
-  group_by(cyl) %>%
-  group_map(~ head(.x, 2))
-
-mtcars %>%
-  group_map(~ head(.x, 5))
 
 ```
+
+## 4d
+
+Check range of original data
 
 ```{r}
 
-mod |> class()
+(max_dt <- aus_accommodation |> 
+  pull(Date) |> 
+  max())
 
-test <- mod |> 
-  t() |> 
-  as.data.frame(col.names = mod[[State]]) 
+(min_dt <- aus_accommodation |> 
+    pull(Date) |> 
+    min())
 
-test
+#so we need to forecast 6 quarters forward
 
-test |> length()
-
-test[1] |> class()
-
-mod
-map(mod, gg_tsresiduals())
-
-print_residuals <- function(in_mable) {
-  #print(class(in_mable))
-  in_mable |> gg_tsresiduals()
-}
-
-mod |> 
-  mutate()
-
-walk(mod$arima_model, print_residuals)
-
-
-mod |> class()
-mod |> pull(arima_model) |> class()
-mod$arima_model |> class()
-
-mod
-
-mod
-mod[1,] |> gg_tsresiduals()
-mod[1,2]
-
-mod |> t() |> t() |> class()
-
-test <- mod |> group_by(State) |> group_split()
-
-test |> class()
-
-test[1] |> as_mable() |> class()
-
-print_class <- function(obj){
-  obj |> 
-    class() |> 
-    print()
-}
-
-walk(mod, class)
+fc_h = yearquarter("2017 Q4") - max_dt
 
 ```
+
+Redo the model
+
+```{r}
+aus <- aus_accommodation |> 
+  mutate(
+    CPI_index = CPI / 100,
+    Takings_CPI = Takings / CPI_index
+  )
+
+
+mod <- aus |> model(
+  arima_model = ARIMA(Takings/CPI_index ~ trend(knots = yearquarter(c("2008 Q1"))) + season()) 
+)
+
+```
+
+
+Forecast CPI
+
+```{r}
+
+aus_accommodation |> autoplot(CPI) +
+  scale_y_log10()
+
+# this causes issues with autoplot later
+# CPI_mod <- aus_accommodation |> 
+#   summarize(avg_CPI = mean(CPI)) |> 
+#   model(
+#     cpi_arima = ARIMA(log(avg_CPI) ~ trend() + season())
+#   )
+
+CPI_mod <- aus_accommodation |>
+  model(
+    cpi_arima = ARIMA(log(CPI) ~ trend() + season())
+  )
+
+CPI_mod |> 
+  filter(State == "New South Wales") |> 
+  report()
+
+CPI_fc <- CPI_mod |> 
+  forecast(h=fc_h)
+
+CPI_fc |>
+  filter(State == "New South Wales") |>  
+  autoplot(aus_accommodation)
+
+#CPI_fc |> pull(Date) |> max()
+
+
+(new_aus <- new_data(aus_accommodation, n = fc_h) |> 
+    left_join(CPI_fc) |> 
+    transmute(
+      Date = Date,
+      State = State,
+      CPI_index = .mean/100
+    ))
+
+mod
+
+fc_aus <- mod |> 
+  forecast(new_data = new_aus) # so you can't have the extra variables ther
+
+fc_aus
+
+fc_aus |> autoplot(aus)
+
+```
+
+What does the trend or season functions actually do?
+
+How do we plot the forecasts on the original scale?
+
+
+
+
+
+
+```{r}
+
+vic_elec_daily <- vic_elec |>
+  filter(year(Time) == 2014) |>
+  index_by(Date = date(Time)) |>
+  summarise(
+    Demand = sum(Demand) / 1e3,
+    Temperature = max(Temperature),
+    Holiday = any(Holiday)
+  ) |>
+  mutate(Day_Type = case_when(
+    Holiday ~ "Holiday",
+    wday(Date) %in% 2:6 ~ "Weekday",
+    TRUE ~ "Weekend"
+  ))
+
+vic_elec_daily |>
+  ggplot(aes(x = Temperature, y = Demand, colour = Day_Type)) +
+  geom_point() +
+  labs(y = "Electricity demand (GW)",
+       x = "Maximum daily temperature")
+
+new_data(vic_elec_daily, 14)
+
+vic_elec_future <- new_data(vic_elec_daily, 14) |>
+  mutate(
+    Temperature = 26,
+    Holiday = c(TRUE, rep(FALSE, 13)),
+    Day_Type = case_when(
+      Holiday ~ "Holiday",
+      wday(Date) %in% 2:6 ~ "Weekday",
+      TRUE ~ "Weekend"
+    )
+  )
+forecast(fit, vic_elec_future) |>
+  autoplot(vic_elec_daily) +
+  labs(title="Daily electricity demand: Victoria",
+       y="GW")
+
+```
+
+
+
+
+
+
+
 
 
 

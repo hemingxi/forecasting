@@ -39,8 +39,28 @@ any generic function that has an "integer" method will be used.
 typeof() gives the "type" of object from R's point of view, whilst mode() gives the "type" of object from the point of view of Becker, Chambers & Wilks (1988). The latter may be more compatible with other S implementations according to the R Language Definition manual.
 
 
+# Functional Iteration
+
+```{r}
+
+df |> group_walk(func) # or group_map() allows you to to get sub data frames and apply the function to each of them
+df |> map(func) # or walk() allows you to apply the function to each element of the list
 
 
+```
+
+
+# Unpack Hilo
+
+The unpack_hilo function stopped working recently, you can do this instead:
+
+```{r}
+  hilo() |> 
+  mutate(
+    lower = `95%`$lower,
+    upper = `95%`$upper
+  )
+```
 
 
 
