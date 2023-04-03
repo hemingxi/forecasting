@@ -421,9 +421,88 @@ fc |>
 
 ```
 
-# Follow up Questions
 
 For the previous question, try doing a log transform and adding log(CPI) to the regression
+
+```{r}
+aus_accommodation
+
+aus_accommodation |> autoplot(Takings)
+
+aus_accommodation |> autoplot(Takings) + scale_y_log10()
+
+
+aus <- aus_accommodation |> 
+  mutate(
+    CPI_index = CPI / 100,
+    #`Takings/CPI_index` = Takings / CPI_index,
+    Takings_CPI = Takings / CPI_index
+  )
+
+aus_mod <- aus |> 
+  model(
+    arima_model = ARIMA(Takings_CPI ~ trend(knots = yearquarter(c("2008 Q1"))) + season()) 
+  )
+
+aus_mod_log <- aus |> 
+  model(
+    log_arima = ARIMA(log(Takings) ~ log(CPI_index) + trend(knots = yearquarter(c("2008 Q1"))) + season())
+  )
+    
+
+```
+
+Print the residuals graphs:
+
+```{r}
+print_info  <- function(obj, in_key){
+  obj |> as_mable(key = State, model = arima_model) |> gg_tsresiduals() |>  print()
+}
+
+aus_mod |> group_by(row_number()) |>  group_walk(print_info)
+
+```
+
+
+```{r}
+
+print_info  <- function(obj, in_key){
+  obj |> as_mable(key = State, model = log_arima) |> gg_tsresiduals() |>  print()
+}
+
+aus_mod_log |> group_by(row_number()) |>  group_walk(print_info)
+```
+
+And you can model from here. The log model seems a bit better, and you can adjust for CPI directly in the model call, meaning that instead of creating our own custom code, we can use the standard tools.
+
+
+# Qn 5 Harmonic Regression
+
+We fitted a harmonic regression model to part of the us_gasoline series in Exercise 5 in Section 7.10. We will now revisit this model, and extend it to include more data and ARMA errors.
+
+## 5a
+
+Using TSLM(), fit a harmonic regression with a piecewise linear time trend to the full series. Select the position of the knots in the trend and the appropriate number of Fourier terms to include by minimising the AICc or CV value.
+
+
+```{r}
+us_gasoline |> head()
+
+
+us_gasoline |> autoplot(Barrels)
+
+#model code:
+fourier_beer <- recent_production |>
+  model(TSLM(Beer ~ trend() + fourier(K = 2)))
+report(fourier_beer)
+
+
+```
+
+
+
+
+# Follow up Questions
 
 What does the trend or season functions actually do?
 
