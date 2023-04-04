@@ -488,14 +488,25 @@ Using TSLM(), fit a harmonic regression with a piecewise linear time trend to th
 ```{r}
 us_gasoline |> head()
 
+us_gasoline |> pull(Week) |> max()
 
 us_gasoline |> autoplot(Barrels)
 
-#model code:
-fourier_beer <- recent_production |>
-  model(TSLM(Beer ~ trend() + fourier(K = 2)))
-report(fourier_beer)
+gas_mod <-  us_gasoline |> model(
+  tslm_fourier = TSLM(Barrels ~ trend(knots = yearweek(c("2006 W01", "2013 W01"))) + fourier(K=10)),
+  tslm_linear = TSLM(Barrels ~ trend(knots = yearweek(c("2006 W01", "2013 W01")))),
+  tslm_fourier_log = TSLM(log(Barrels) ~ trend(knots = yearweek(c("2006 W01", "2013 W01"))) + fourier(K=10)),
+)
 
+gas_mod |>  
+  augment() |> 
+  ggplot(aes(x = Week)) +
+  geom_point(aes(y = Barrels), size = 1, alpha = .25) +
+  geom_line(aes(y = .fitted, color = .model))
+
+gas_mod |> glance()
+
+# could look at AICc and CV performance to see which model does the best here
 
 ```
 
