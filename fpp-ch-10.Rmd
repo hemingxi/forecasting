@@ -507,9 +507,34 @@ gas_mod |>
 gas_mod |> glance()
 
 # could look at AICc and CV performance to see which model does the best here
+# we would do so by fitting a variety of models, forecasting, and looking at their accuracy on the test set
 
 ```
+## 5b
 
+```{r}
+
+gas_mod_arima <-  us_gasoline |> model(
+  arima_fourier = ARIMA(Barrels ~ trend(knots = yearweek(c("2006 W01", "2013 W01"))) + fourier(K=10))
+  ,arima_linear = ARIMA(Barrels ~ trend(knots = yearweek(c("2006 W01", "2013 W01"))))
+  #,arima_fourier_log = ARIMA(log(Barrels) ~ trend(knots = yearweek(c("2006 W01", "2013 W01"))) + fourier(K=10)),
+)
+
+gas_mod_arima <-  us_gasoline |> model(
+  arima_fourier = ARIMA(Barrels ~ trend() + fourier(K=10))
+  #,arima_linear = ARIMA(Barrels ~ trend(knots = yearweek(c("2006 W01", "2013 W01")))),
+  #,arima_fourier_log = ARIMA(log(Barrels) ~ trend(knots = yearweek(c("2006 W01", "2013 W01"))) + fourier(K=10)),
+)
+
+gas_mod_arima |> 
+  augment() |> 
+  ggplot(aes(x = Week)) +
+  geom_point(aes(y = Barrels), size = 1, alpha = .25) +
+  geom_line(aes(y = .fitted, color = .model))
+
+gas_mod |> glance()
+
+```
 
 
 
