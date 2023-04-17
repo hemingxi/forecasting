@@ -508,6 +508,7 @@ gas_mod |> glance()
 
 # could look at AICc and CV performance to see which model does the best here
 # we would do so by fitting a variety of models, forecasting, and looking at their accuracy on the test set
+# could also split into training and testing set and look at the predicted values. However, since it's a piecewise linear trend I'm not sure if that'll be very good?
 
 ```
 ## 5b
@@ -525,6 +526,9 @@ gas_mod_arima <-  us_gasoline |> model(
   #,arima_linear = ARIMA(Barrels ~ trend(knots = yearweek(c("2006 W01", "2013 W01")))),
   #,arima_fourier_log = ARIMA(log(Barrels) ~ trend(knots = yearweek(c("2006 W01", "2013 W01"))) + fourier(K=10)),
 )
+```
+
+```{r}
 
 gas_mod_arima |> 
   augment() |> 
@@ -537,6 +541,37 @@ gas_mod |> glance()
 ```
 
 
+```{r}
+gas_mod_arima <-  us_gasoline |> model(
+  tslm_fourier = TSLM(Barrels ~ trend(knots = yearweek(c("2006 W01", "2013 W01"))) + fourier(K=10)),
+  tslm_linear = TSLM(Barrels ~ trend(knots = yearweek(c("2006 W01", "2013 W01")))),
+  arima_fourier = ARIMA(Barrels ~ trend(knots = yearweek(c("2006 W01", "2013 W01"))) + fourier(K=10)),
+  arima_linear = ARIMA(Barrels ~ trend(knots = yearweek(c("2006 W01", "2013 W01"))))
+)
+
+gas_mod_arima |> glance()
+
+
+```
+
+
+# Qb 6
+
+The model is identified as pdq = (0, 1, 1), PDQ = (2, 1, 0)
+
+b. Beta_1 and Beta_2 tells us that the temperature demand for cooling rises faster than heating, at least in Australia. For each squared change in temperature (+1 +4 +9, +16 etc), the electricity demand increases 0.77% for heating, and 2.08% for cooling
+
+c. Expand out the terms and put n_t on one side for forecasting
+
+d. Forecast out in an interative manner, one period at a time. Set future unknown values of error to 0
+
+e. $\eta_t$ has auto correlation, so if we used standard regression we would be over-confident in our estimate. It also helps us more accurately predict future values, reflecting recent high or low points in our data. (I'm not sure if this is correct)
+
+```{r}
+
+```
+
+
 
 # Follow up Questions
 
@@ -544,7 +579,6 @@ What does the trend or season functions actually do?
 
 How do the transformations work within a model call? Are we back-transforming the confidence intervals into the original scale, or is there something more that is being done there?
 
-This is some reference code that can be deleted:
 
 
 
