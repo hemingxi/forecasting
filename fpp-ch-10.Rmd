@@ -555,7 +555,7 @@ gas_mod_arima |> glance()
 ```
 
 
-# Qb 6
+# Qn 6
 
 The model is identified as pdq = (0, 1, 1), PDQ = (2, 1, 0)
 
@@ -572,6 +572,7 @@ e. $\eta_t$ has auto correlation, so if we used standard regression we would be 
 ```
 
 
+# Qn 7
 
 # Follow up Questions
 
