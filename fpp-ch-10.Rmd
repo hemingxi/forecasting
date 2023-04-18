@@ -521,36 +521,94 @@ gas_mod_arima <-  us_gasoline |> model(
   #,arima_fourier_log = ARIMA(log(Barrels) ~ trend(knots = yearweek(c("2006 W01", "2013 W01"))) + fourier(K=10)),
 )
 
+# there is no error here, this just takes some time to run
 gas_mod_arima <-  us_gasoline |> model(
   arima_fourier = ARIMA(Barrels ~ trend() + fourier(K=10))
   #,arima_linear = ARIMA(Barrels ~ trend(knots = yearweek(c("2006 W01", "2013 W01")))),
   #,arima_fourier_log = ARIMA(log(Barrels) ~ trend(knots = yearweek(c("2006 W01", "2013 W01"))) + fourier(K=10)),
 )
-```
 
-```{r}
+# this model takes a very long time to run
+# I think because at each step for ARIMA search, it needs to find the best fourier model?
+gas_mod_arima <-  us_gasoline |> model(
+  arima_fourier = ARIMA(Barrels ~ trend(knots = yearweek(c("2006 W01", "2013 W01"))) + fourier(K=10))
+  #,arima_linear = ARIMA(Barrels ~ trend(knots = yearweek(c("2006 W01", "2013 W01")))),
+  #,arima_fourier_log = ARIMA(log(Barrels) ~ trend(knots = yearweek(c("2006 W01", "2013 W01"))) + fourier(K=10)),
+)
 
-gas_mod_arima |> 
+gas_mod_arima |> report()
+
+gas_mod_arima |>  
   augment() |> 
   ggplot(aes(x = Week)) +
   geom_point(aes(y = Barrels), size = 1, alpha = .25) +
   geom_line(aes(y = .fitted, color = .model))
 
-gas_mod |> glance()
+# the model is still not capturing the variation in the data
 
 ```
 
 
 ```{r}
-gas_mod_arima <-  us_gasoline |> model(
-  tslm_fourier = TSLM(Barrels ~ trend(knots = yearweek(c("2006 W01", "2013 W01"))) + fourier(K=10)),
-  tslm_linear = TSLM(Barrels ~ trend(knots = yearweek(c("2006 W01", "2013 W01")))),
-  arima_fourier = ARIMA(Barrels ~ trend(knots = yearweek(c("2006 W01", "2013 W01"))) + fourier(K=10)),
-  arima_linear = ARIMA(Barrels ~ trend(knots = yearweek(c("2006 W01", "2013 W01"))))
+
+# gas_mod_arima <-  us_gasoline |> model(
+#   tslm_fourier = TSLM(Barrels ~ trend(knots = yearweek(c("2006 W01", "2013 W01"))) + fourier(K=10)),
+#   tslm_linear = TSLM(Barrels ~ trend(knots = yearweek(c("2006 W01", "2013 W01")))),
+#   arima_fourier = ARIMA(Barrels ~ trend(knots = yearweek(c("2006 W01", "2013 W01"))) + fourier(K=10)),
+#   arima_linear = ARIMA(Barrels ~ trend(knots = yearweek(c("2006 W01", "2013 W01"))))
+# )
+# 
+# gas_mod_arima |> glance()
+
+```
+## 5c
+
+```{r}
+resid <- bind_rows(
+  `Reg Resid` = gas_mod_arima |> residuals(type = "regression") |> as_tibble(),
+  `ARIMA Resid` = gas_mod_arima |> residuals(type = "innovation") |> as_tibble(),
+  .id = "type"
 )
 
-gas_mod_arima |> glance()
+resid |> 
+  mutate(
+    type = factor(type, levels = c('Reg Resid', 'ARIMA Resid'))
+  ) |> 
+  ggplot(aes(x = Week, y = .resid)) + 
+  geom_line() + 
+  facet_grid(vars(type))
 
+#ljung box - test if the residuals come from a white noise sseries
+aug <- gas_mod_arima |> 
+  augment() 
+
+aug |> head()
+
+#innovation - arima residuals
+aug |> 
+  features(.innov, ljung_box, lag = 10)
+
+#regression - residuals
+aug |> 
+  features(.resid, ljung_box, dof =? lag = 10)
+
+gas_mod_arima |> gg_tsresiduals() 
+# the residuals look good
+
+# why are the ARIMA and innovation residuals the same?
+gas_mod_arima |> report()
+
+aug |> 
+  mutate(
+    diff_res = abs(.resid - .innov)
+  ) |> 
+  filter(
+    diff_res < 0.01
+  )
+
+These all match!
+
+#they are actually not the same - you will see that
 
 ```
 
@@ -574,14 +632,21 @@ e. $\eta_t$ has auto correlation, so if we used standard regression we would be 
 
 # Qn 7
 
+Skip
+
 # Follow up Questions
+
+Why are residuals the same?
+Ljung_box - input proper values for dof and lag 
+
+WHy does 5b take so long to run?
 
 What does the trend or season functions actually do?
 
 How do the transformations work within a model call? Are we back-transforming the confidence intervals into the original scale, or is there something more that is being done there?
 
-
-
+I thought innovation residual was something that was on the original scale? There's also "regression" or "innovation" in the "residuals" function?
+  Innovation residuals correspond to the white noise process that drives the evolution of the time series model.
 
 
 

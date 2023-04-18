@@ -1,0 +1,29 @@
+---
+title: "fpp-ch-10"
+output: html_notebook
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+# Load Packages
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(data.table) 
+library(fpp3)
+library(readr)
+library(USgas)
+library(scales)
+library(readxl)
+library(ggdist)
+library(urca)
+library(purrr)
+
+```
+
+```{r}
+
+```
+
